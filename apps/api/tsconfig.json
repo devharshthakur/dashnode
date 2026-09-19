@@ -1,0 +1,9 @@
+{
+  "extends": "@packages/typescript-config/node.json",
+  "include": [
+    "src",
+    "tsdown.config.ts",
+    "eslint.config.js",
+    "prettier.config.js"
+  ]
+}

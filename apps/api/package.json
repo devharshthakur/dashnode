@@ -1,0 +1,39 @@
+{
+  "name": "api",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "imports": {
+    "#lib/*": "./src/lib/*.ts",
+    "#services/*": "./src/services/*.ts",
+    "#middlewares/*": "./src/middlewares/*.ts",
+    "#routes/*": "./src/routes/*.ts"
+  },
+  "scripts": {
+    "dev": "nodemon",
+    "build": "tsdown",
+    "start": "node build/index.mjs",
+    "preview": "node build/index.mjs",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint .",
+    "format": "prettier --write --ignore-unknown --list-different .",
+    "check": "prettier --check ."
+  },
+  "dependencies": {
+    "express": "5.2.1",
+    "zod": "4.6.5"
+  },
+  "devDependencies": {
+    "@packages/eslint-config": "workspace:*",
+    "@packages/prettier-config": "workspace:*",
+    "@packages/typescript-config": "workspace:*",
+    "@types/express": "5.0.6",
+    "@types/node": "26.6.1",
+    "eslint": "10.10.0",
+    "nodemon": "3.1.14",
+    "prettier": "3.9.8",
+    "tsdown": "0.23.0",
+    "tsx": "4.23.13",
+    "typescript": "6.0.3"
+  }
+}
