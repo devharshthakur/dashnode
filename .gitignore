@@ -1,0 +1,27 @@
+# Dependencies
+node_modules
+
+# Build output
+dist
+build
+.output
+.nitro
+.tanstack
+.vinxi
+
+# Turborepo
+.turbo
+
+# Test / coverage
+coverage
+
+# Logs
+*.log
+
+# Environment
+.env
+.env.*
+!.env.example
+
+# OS
+.DS_Store

@@ -1,0 +1,17 @@
+packages:
+  - 'apps/*'
+  - 'packages/*'
+
+# pnpm blocks dependency build scripts by default; only these may run them.
+allowBuilds:
+  '@google/genai': true
+  esbuild: true
+  lightningcss: true
+  protobufjs: true
+  unrs-resolver: true
+
+# Minimum minutes after publish before pnpm will install a version.
+# pnpm's default since v11 is 1440 (1 day); set explicitly for clarity.
+# Pin dependencies to versions older than this window instead of using
+# minimumReleaseAgeExclude.
+minimumReleaseAge: 1440

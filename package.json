@@ -1,0 +1,65 @@
+{
+  "name": "hashnode-clone",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Full-stack developer blogging platform inspired by Hashnode — write and publish Markdown-based technical blogs with syntax-highlighted code, technology tags, drafts, JWT authentication and a public developer feed.",
+  "keywords": [
+    "hashnode-clone",
+    "blogging-platform",
+    "developer-blog",
+    "mern",
+    "mongodb",
+    "express",
+    "react",
+    "node",
+    "jwt",
+    "bcryptjs",
+    "mongoose",
+    "axios",
+    "react-router",
+    "react-context",
+    "react-markdown",
+    "syntax-highlighter",
+    "vite",
+    "typescript",
+    "monorepo",
+    "pnpm"
+  ],
+  "author": {
+    "name": "Harsh Thakur",
+    "email": "harshprojects2002@gmail.com",
+    "url": "https://github.com/devharshthakur"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/devharshthakur/hashnode-clone.git"
+  },
+  "homepage": "https://github.com/devharshthakur/hashnode-clone#readme",
+  "bugs": {
+    "url": "https://github.com/devharshthakur/hashnode-clone/issues"
+  },
+  "scripts": {
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "preview": "turbo run preview",
+    "lint": "turbo run lint",
+    "format": "turbo run format",
+    "check": "turbo run check",
+    "typecheck": "turbo run typecheck",
+    "lint-staged": "lint-staged",
+    "prepare": "husky"
+  },
+  "devDependencies": {
+    "@packages/prettier-config": "workspace:*",
+    "husky": "9.1.7",
+    "lint-staged": "17.5.1",
+    "prettier": "3.9.8",
+    "turbo": "2.10.13"
+  },
+  "engines": {
+    "node": ">=24.0.0"
+  },
+  "packageManager": "pnpm@12.4.2",
+  "type": "module"
+}
