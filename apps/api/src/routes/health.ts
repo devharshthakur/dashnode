@@ -1,6 +1,6 @@
 import { Router } from 'express'
 
-import { getHealthStatus } from '#services/health.service'
+import { getHealthStatus } from '#services/health'
 
 export const healthRouter = Router()
 

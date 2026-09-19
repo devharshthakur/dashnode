@@ -12,6 +12,6 @@ export function errorHandler(
   res: Response,
   _next: NextFunction,
 ) {
-  logger.error(err.message)
+  logger.error({ err }, 'Unhandled request error')
   res.status(500).json({ error: 'Internal Server Error' })
 }
