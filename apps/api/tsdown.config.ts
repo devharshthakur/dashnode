@@ -5,7 +5,18 @@ export default defineConfig({
   outDir: 'build',
   platform: 'node',
   format: 'esm',
-  sourcemap: true,
+  sourcemap: false,
   clean: true,
   dts: false,
+  deps: {
+    alwaysBundle: [/^@packages\//],
+  },
+  outputOptions: {
+    comments: false,
+  },
+  inputOptions: {
+    experimental: {
+      attachDebugInfo: 'none',
+    },
+  },
 })
