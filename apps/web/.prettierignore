@@ -1,0 +1,10 @@
+package-lock.json
+pnpm-lock.yaml
+yarn.lock
+dist
+build
+.output
+.nitro
+.tanstack
+.vinxi
+src/routeTree.gen.ts
