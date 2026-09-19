@@ -1,8 +1,33 @@
 import { createApp } from './app'
-import { env } from './env'
+import { connectDb, disconnectDb } from '#config/db'
+import { env } from '#env'
+import { logger } from '#lib/logger'
 
-const app = createApp()
+async function main() {
+  await connectDb(env.MONGO_URI)
 
-app.listen(env.PORT, () => {
-  console.log(`API listening on http://localhost:${env.PORT}`)
+  const app = createApp()
+
+  const server = app.listen(env.PORT, () => {
+    logger.info(`API listening on http://localhost:${env.PORT}`)
+  })
+
+  async function shutdown(signal: NodeJS.Signals) {
+    logger.info(`${signal} received, shutting down`)
+    server.close()
+    await disconnectDb()
+    process.exit(0)
+  }
+
+  process.on('SIGINT', () => {
+    void shutdown('SIGINT')
+  })
+  process.on('SIGTERM', () => {
+    void shutdown('SIGTERM')
+  })
+}
+
+main().catch((error: unknown) => {
+  logger.error({ err: error }, 'Failed to start API')
+  process.exit(1)
 })

@@ -1,8 +1,21 @@
-export const logger = {
-  info(message: string, ...args: unknown[]) {
-    console.log(`[info] ${message}`, ...args)
-  },
-  error(message: string, ...args: unknown[]) {
-    console.error(`[error] ${message}`, ...args)
-  },
-}
+import { pino } from 'pino'
+
+import { env } from '../env'
+
+const isProduction = env.NODE_ENV === 'production'
+
+export const logger = pino({
+  level: env.LOG_LEVEL,
+  ...(isProduction
+    ? {}
+    : {
+        transport: {
+          target: 'pino-pretty',
+          options: {
+            colorize: true,
+            translateTime: 'SYS:standard',
+            ignore: 'pid,hostname',
+          },
+        },
+      }),
+})

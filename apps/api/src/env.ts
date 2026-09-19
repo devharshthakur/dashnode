@@ -1,10 +1,20 @@
+import { existsSync } from 'node:fs'
+
 import { z } from 'zod'
+
+if (existsSync('.env')) {
+  process.loadEnvFile()
+}
 
 const envSchema = z.object({
   NODE_ENV: z
     .enum(['development', 'test', 'production'])
     .default('development'),
   PORT: z.coerce.number().int().positive().default(3001),
+  LOG_LEVEL: z
+    .enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent'])
+    .default('info'),
+  MONGO_URI: z.string().min(1).default('mongodb://localhost:27017/hashnode'),
 })
 
 const parsedEnv = envSchema.safeParse(process.env)
