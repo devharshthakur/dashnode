@@ -15,6 +15,8 @@ const envSchema = z.object({
     .enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent'])
     .default('info'),
   MONGO_URI: z.string().min(1).default('mongodb://localhost:27017/hashnode'),
+  HTTP_TIMEOUT_MS: z.coerce.number().int().positive().default(10_000),
+  HTTP_BASE_URL: z.url().optional(),
 })
 
 const parsedEnv = envSchema.safeParse(process.env)
