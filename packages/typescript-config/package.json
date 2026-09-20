@@ -6,5 +6,8 @@
     "./base.json": "./base.json",
     "./node.json": "./node.json",
     "./react.json": "./react.json"
+  },
+  "scripts": {
+    "check": "prettier --check ."
   }
 }

@@ -5,6 +5,9 @@
   "exports": {
     ".": "./index.js"
   },
+  "scripts": {
+    "check": "prettier --check ."
+  },
   "dependencies": {
     "@eslint/js": "10.0.1",
     "eslint-config-prettier": "10.1.8",
