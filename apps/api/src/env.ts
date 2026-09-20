@@ -16,6 +16,9 @@ const envSchema = z.object({
     .default('info'),
   MONGO_URI: z.string().min(1).default('mongodb://localhost:27017/hashnode'),
   CORS_ORIGIN: z.string().min(1).default('http://localhost:5173'),
+  JWT_SECRET: z
+    .string()
+    .min(32, 'JWT_SECRET must be at least 32 characters long'),
   HTTP_TIMEOUT_MS: z.coerce.number().int().positive().default(10_000),
   HTTP_BASE_URL: z.url().optional(),
 })
