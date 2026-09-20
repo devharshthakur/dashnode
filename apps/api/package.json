@@ -16,7 +16,7 @@
     "dev": "nodemon",
     "build": "tsdown",
     "start": "node build/index.mjs",
-    "preview": "node build/index.mjs",
+    "preview": "NODE_ENV=production node build/index.mjs",
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
     "format": "prettier --write --ignore-unknown --list-different .",
