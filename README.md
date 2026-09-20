@@ -28,7 +28,7 @@ A full-stack developer blogging platform inspired by Hashnode. Authors write Mar
 3. Update `apps/api/.env` for local development. In particular, use the web dev-server origin:
 
    ```env
-   MONGO_URI=mongodb://localhost:27017/hashnode
+   MONGO_URI=mongodb://localhost:27017/hashnode?directConnection=true
    CORS_ORIGIN=http://localhost:3000
    ```
 
@@ -37,6 +37,8 @@ A full-stack developer blogging platform inspired by Hashnode. Authors write Mar
    ```bash
    pnpm --filter api db:up
    ```
+
+   The container runs as a **single-node replica set**, which MongoDB requires before it allows multi-document transactions. `db:up` also runs a one-shot `mongo-init` service that initiates the set and waits for a primary, so transactions are ready to use; no extra steps are needed.
 
 5. Run all workspace development processes:
 
