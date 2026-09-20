@@ -3,7 +3,7 @@ import { pinoHttp } from 'pino-http'
 
 import { logger } from '#lib/logger'
 import { errorHandler, notFoundHandler } from '#middlewares/error'
-import { apiRouter } from '#routes/index'
+import { API_PREFIX, apiRouter } from '#routes/index'
 
 export function createApp() {
   const app = express()
@@ -11,7 +11,7 @@ export function createApp() {
   app.use(pinoHttp({ logger }))
   app.use(express.json())
 
-  app.use('/api', apiRouter)
+  app.use(API_PREFIX, apiRouter)
 
   app.use(notFoundHandler)
   app.use(errorHandler)
