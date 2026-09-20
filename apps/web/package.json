@@ -27,6 +27,7 @@
     "@tanstack/ai-ollama": "0.11.3",
     "@tanstack/ai-openai": "0.22.8",
     "@tanstack/ai-react": "0.27.0",
+    "@tanstack/markdown": "0.0.15",
     "@tanstack/react-devtools": "0.10.12",
     "@tanstack/react-query": "5.103.1",
     "@tanstack/react-query-devtools": "5.103.1",
