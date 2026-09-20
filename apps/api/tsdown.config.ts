@@ -4,25 +4,29 @@ import { defineConfig } from 'tsdown'
  * Build config for the API server.
  *
  * The output is a self-contained bundle: `deps.alwaysBundle` inlines every
- * runtime dependency so `build/` can run with no `node_modules` directory
- * present (useful for slim production images).
+ * runtime dependency so `build/` can run without a `node_modules` directory
+ * (e.g. slim production images).
  *
- * Caveat: `pino-pretty` is loaded by pino as a *string* transport at runtime,
- * so it cannot be bundled. Run the built artifact with `NODE_ENV=production`
- * to skip that transport — see `src/config/logger.ts`.
- *
- * Note: the bundle is emitted as multiple chunks (dynamic imports create
- * shared chunks), so deploy the whole `build/` directory, not just
- * `index.mjs`.
+ * Constraints for contributors:
+ * - Dependencies that ship native addons or spawn binaries (sharp, bcrypt,
+ *   better-sqlite3, esbuild, ...) cannot be inlined and must be externalized
+ *   via `deps.neverBundle`, which requires shipping their files separately.
+ * - Worker scripts resolved from `__dirname` at runtime cannot be bundled.
+ *   `src/config/logger.ts` therefore uses `pino-pretty` as an in-process
+ *   stream instead of pino's worker `transport`.
+ * - Dynamic imports (e.g. `pino-pretty`) produce separate chunks, so deploy
+ *   the whole `build/` directory, not just `index.mjs`.
  */
 export default defineConfig({
   entry: ['src/index.ts'],
   outDir: 'build',
   platform: 'node',
+  target: 'node24',
   format: 'esm',
   sourcemap: false,
   clean: true,
   dts: false,
+  shims: true,
   deps: {
     // Bundle all dependencies (npm + workspace) instead of treating them as
     // external. `/.*/` also matches transitive deps that would otherwise be
