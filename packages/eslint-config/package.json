@@ -6,7 +6,8 @@
     ".": "./index.js"
   },
   "scripts": {
-    "check": "prettier --check ."
+    "check": "prettier --check .",
+    "format": "prettier --write --ignore-unknown --list-different ."
   },
   "dependencies": {
     "@eslint/js": "10.0.1",

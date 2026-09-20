@@ -8,6 +8,7 @@
     "./react.json": "./react.json"
   },
   "scripts": {
-    "check": "prettier --check ."
+    "check": "prettier --check .",
+    "format": "prettier --write --ignore-unknown --list-different ."
   }
 }
