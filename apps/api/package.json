@@ -4,7 +4,6 @@
   "private": true,
   "type": "module",
   "imports": {
-    "#lib/*": "./src/lib/*.ts",
     "#services/*": "./src/services/*.ts",
     "#middlewares/*": "./src/middlewares/*.ts",
     "#routes/*": "./src/routes/*.ts",

@@ -1,7 +1,7 @@
 import express from 'express'
 import { pinoHttp } from 'pino-http'
 
-import { logger } from '#lib/logger'
+import { logger } from '#config/logger'
 import { errorHandler, notFoundHandler } from '#middlewares/error'
 import { API_PREFIX, apiRouter } from '#routes/index'
 
