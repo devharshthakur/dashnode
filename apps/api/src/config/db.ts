@@ -1,6 +1,6 @@
 import mongoose from 'mongoose'
 
-import { logger } from '#lib/logger'
+import { logger } from '#config/logger'
 
 mongoose.connection.on('connected', () => {
   logger.info(`MongoDB connected to "${mongoose.connection.name}"`)

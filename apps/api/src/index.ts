@@ -1,7 +1,7 @@
 import { createApp } from './app'
 import { connectDb, disconnectDb } from '#config/db'
 import { env } from '#env'
-import { logger } from '#lib/logger'
+import { logger } from '#config/logger'
 
 async function main() {
   await connectDb(env.MONGO_URI)

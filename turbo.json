@@ -32,7 +32,7 @@
       "outputs": []
     },
     "typecheck": {
-      "dependsOn": ["^build", "transit"],
+      "dependsOn": ["transit"],
       "outputs": []
     }
   }

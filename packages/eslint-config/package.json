@@ -1,10 +1,13 @@
 {
   "name": "@packages/eslint-config",
-  "version": "0.0.0",
   "private": true,
   "type": "module",
   "exports": {
     ".": "./index.js"
+  },
+  "scripts": {
+    "check": "prettier --check .",
+    "format": "prettier --write --ignore-unknown --list-different ."
   },
   "dependencies": {
     "@eslint/js": "10.0.1",
@@ -13,6 +16,6 @@
     "typescript-eslint": "8.70.0"
   },
   "peerDependencies": {
-    "eslint": "10.10.0"
+    "eslint": "10.11.0"
   }
 }

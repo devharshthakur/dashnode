@@ -1,6 +1,6 @@
 import type { NextFunction, Request, Response } from 'express'
 
-import { logger } from '#lib/logger'
+import { logger } from '#config/logger'
 
 export function notFoundHandler(req: Request, res: Response) {
   res.status(404).json({ error: 'Not Found', path: req.originalUrl })

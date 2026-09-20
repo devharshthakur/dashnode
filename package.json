@@ -47,6 +47,7 @@
     "format": "turbo run format",
     "check": "turbo run check",
     "typecheck": "turbo run typecheck",
+    "validate": "turbo run lint check typecheck",
     "lint-staged": "lint-staged",
     "prepare": "husky"
   },
@@ -55,11 +56,11 @@
     "husky": "9.1.7",
     "lint-staged": "17.5.1",
     "prettier": "3.9.8",
-    "turbo": "2.10.13"
+    "turbo": "2.11.2"
   },
   "engines": {
     "node": ">=24.0.0"
   },
-  "packageManager": "pnpm@12.4.2",
+  "packageManager": "pnpm@12.5.1",
   "type": "module"
 }

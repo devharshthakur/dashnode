@@ -1,9 +1,12 @@
 {
   "name": "@packages/prettier-config",
-  "version": "0.0.0",
   "private": true,
   "type": "module",
   "exports": {
     ".": "./index.js"
+  },
+  "scripts": {
+    "check": "prettier --check .",
+    "format": "prettier --write --ignore-unknown --list-different ."
   }
 }
