@@ -25,6 +25,7 @@
   },
   "dependencies": {
     "axios": "1.20.0",
+    "cookie-parser": "1.4.7",
     "express": "5.2.1",
     "mongoose": "9.10.1",
     "pino": "10.3.1",
@@ -35,6 +36,7 @@
     "@packages/eslint-config": "workspace:*",
     "@packages/prettier-config": "workspace:*",
     "@packages/typescript-config": "workspace:*",
+    "@types/cookie-parser": "1.4.10",
     "@types/express": "5.0.6",
     "@types/node": "26.6.1",
     "eslint": "10.10.0",

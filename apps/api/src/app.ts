@@ -1,3 +1,4 @@
+import cookieParser from 'cookie-parser'
 import express from 'express'
 import { pinoHttp } from 'pino-http'
 
@@ -10,6 +11,9 @@ export function createApp() {
 
   app.use(pinoHttp({ logger }))
   app.use(express.json())
+  // Parse the `Cookie` header into `req.cookies` (and signed cookies into
+  // `req.signedCookies` when a secret is provided).
+  app.use(cookieParser())
 
   app.use(API_PREFIX, apiRouter)
 
