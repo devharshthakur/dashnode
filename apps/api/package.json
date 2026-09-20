@@ -6,6 +6,8 @@
     "#services/*": "./src/services/*.ts",
     "#middlewares/*": "./src/middlewares/*.ts",
     "#routes/*": "./src/routes/*.ts",
+    "#models/*": "./src/models/*.ts",
+    "#utils/*": "./src/utils/*.ts",
     "#config/*": "./src/config/*.ts",
     "#env": "./src/env.ts"
   },
