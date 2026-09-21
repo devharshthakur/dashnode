@@ -1,7 +1,12 @@
 import { Router } from 'express'
 
-import { registerBodySchema } from '#schemas/auth'
-import { EmailTakenError, registerUser } from '#services/auth'
+import { loginBodySchema, registerBodySchema } from '#schemas/auth'
+import {
+  EmailTakenError,
+  InvalidCredentialsError,
+  loginUser,
+  registerUser,
+} from '#services/auth'
 import { setAuthCookie, signSessionToken } from '#utils/auth'
 
 export const authRouter = Router()
@@ -36,8 +41,34 @@ authRouter.post('/register', async (req, res, next) => {
   }
 })
 
-authRouter.post('/login', (_req, res) => {
-  res.status(501).json({ error: 'Not Implemented' })
+authRouter.post('/login', async (req, res, next) => {
+  const parsed = loginBodySchema.safeParse(req.body)
+
+  if (!parsed.success) {
+    res.status(400).json({
+      error: 'Validation Error',
+      details: parsed.error.issues.map((issue) => ({
+        path: issue.path.join('.'),
+        message: issue.message,
+      })),
+    })
+    return
+  }
+
+  try {
+    const user = await loginUser(parsed.data)
+    const token = await signSessionToken(user.id)
+
+    setAuthCookie(res, token)
+    res.status(200).json({ user })
+  } catch (error) {
+    if (error instanceof InvalidCredentialsError) {
+      res.status(401).json({ error: error.message })
+      return
+    }
+
+    next(error)
+  }
 })
 
 authRouter.get('/me', (_req, res) => {

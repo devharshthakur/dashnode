@@ -10,6 +10,18 @@ export class EmailTakenError extends Error {
   }
 }
 
+export class InvalidCredentialsError extends Error {
+  constructor() {
+    super('Invalid email or password')
+    this.name = 'InvalidCredentialsError'
+  }
+}
+
+export interface LoginUserInput {
+  email: string
+  password: string
+}
+
 export interface RegisterUserInput {
   name: string
   email: string
@@ -69,5 +81,31 @@ export async function registerUser(
     }
 
     throw error
+  }
+}
+
+/**
+ * Authenticates a user by email and password.
+ *
+ * The password hash is excluded from normal queries (`select: false`), so it
+ * is explicitly selected here. Missing account and wrong password both
+ * surface as {@link InvalidCredentialsError} to avoid leaking which emails
+ * are registered.
+ */
+export async function loginUser(input: LoginUserInput): Promise<SafeUser> {
+  const user = await User.findOne({ email: input.email }).select('+password')
+
+  if (!user || !(await bcrypt.compare(input.password, user.password))) {
+    throw new InvalidCredentialsError()
+  }
+
+  return {
+    id: String(user._id),
+    name: user.name,
+    email: user.email,
+    bio: user.bio,
+    avatarUrl: user.avatarUrl,
+    createdAt: user.get('createdAt'),
+    updatedAt: user.get('updatedAt'),
   }
 }

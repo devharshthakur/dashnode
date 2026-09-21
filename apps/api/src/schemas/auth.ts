@@ -5,3 +5,8 @@ export const registerBodySchema = z.object({
   email: z.string().trim().toLowerCase().pipe(z.email()),
   password: z.string().min(8).max(72),
 })
+
+export const loginBodySchema = z.object({
+  email: z.string().trim().toLowerCase().pipe(z.email()),
+  password: z.string().min(1),
+})
