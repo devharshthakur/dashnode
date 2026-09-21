@@ -25,6 +25,10 @@ services:
 
   # One-shot helper: initiates the replica set (idempotent) and waits until a
   # primary is elected so the API can immediately use transactions.
+  #
+  # The logic is inlined instead of mounted from scripts/ because Docker Desktop
+  # for macOS fails to bind-mount files from some host paths (notably external
+  # volumes such as /Volumes/<disk>) with "mkdir /host_mnt/...: file exists".
   mongo-init:
     image: mongo:7.0
     container_name: hashnode-mongodb-init
@@ -32,9 +36,28 @@ services:
       mongodb:
         condition: service_healthy
     restart: 'no'
-    entrypoint: ['bash', '/init/mongo-init.sh']
-    volumes:
-      - ./scripts/mongo-init.sh:/init/mongo-init.sh:ro
+    entrypoint:
+      - bash
+      - -c
+      - |
+        set -e
+        mongosh --host mongodb:27017 --quiet --eval '
+          try {
+            rs.status();
+            print("Replica set already initialized");
+          } catch (error) {
+            if (error.code === 94) {
+              rs.initiate({ _id: "rs0", members: [{ _id: 0, host: "localhost:27017" }] });
+              print("Replica set initialized");
+            } else {
+              throw error;
+            }
+          }
+        '
+        until mongosh --host mongodb:27017 --quiet --eval 'db.hello().isWritablePrimary' | grep -q true; do
+          sleep 1
+        done
+        echo "Replica set primary is ready"
 
 volumes:
   mongo_data:
