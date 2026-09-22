@@ -80,13 +80,6 @@ The project will be deployed after the MVP works locally, using:
 | API (`apps/api`)     | [Railway](https://railway.com)               | Run the Express service from the compiled output with production environment variables    |
 | Database             | MongoDB Atlas (or a Railway MongoDB service) | Managed instance, not the local Docker container                                          |
 
-```mermaid
-flowchart LR
-  Browser["Browser"] -->|HTTPS| Vercel["Vercel<br/>apps/web"]
-  Vercel -->|"credentialed HTTPS JSON"| Railway["Railway<br/>apps/api"]
-  Railway -->|"Mongoose over TLS"| Mongo[("MongoDB")]
-```
-
 Vercel and Railway are separate origins, so the production cookie must use `SameSite=None; Secure` and the API’s `CORS_ORIGIN` must list the exact Vercel domain. No production URLs, secrets, or environment values are committed; the eventual deployment must use HTTPS, per-app environment variables, and a production MongoDB instance.
 
 Planned production environment variables:
