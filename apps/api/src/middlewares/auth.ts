@@ -19,6 +19,7 @@ export async function requireAuth(
   const token: unknown = req.cookies?.[AUTH_COOKIE_NAME]
 
   if (typeof token !== 'string' || token.length === 0) {
+    req.log.debug('Request rejected: no session cookie')
     res.status(401).json({ error: 'Unauthorized' })
     return
   }
@@ -27,6 +28,7 @@ export async function requireAuth(
     const { userId, jti } = await verifySessionToken(token)
 
     if (await isTokenRevoked(jti)) {
+      req.log.warn({ jti }, 'Request rejected: session token was revoked')
       res.status(401).json({ error: 'Unauthorized' })
       return
     }
@@ -34,13 +36,16 @@ export async function requireAuth(
     const user = await getUserById(userId)
 
     if (!user) {
+      req.log.warn({ userId }, 'Request rejected: user no longer exists')
       res.status(401).json({ error: 'Unauthorized' })
       return
     }
 
     req.user = user
     next()
-  } catch {
+  } catch (error) {
+    // Same response as the other rejection branches; only log the reason.
+    req.log.warn({ err: error }, 'Request rejected: invalid session token')
     res.status(401).json({ error: 'Unauthorized' })
   }
 }
