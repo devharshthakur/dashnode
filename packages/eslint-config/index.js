@@ -1,4 +1,5 @@
 import js from '@eslint/js'
+import { defineConfig } from 'eslint/config'
 import eslintConfigPrettier from 'eslint-config-prettier'
 import globals from 'globals'
 import tseslint from 'typescript-eslint'
@@ -7,7 +8,7 @@ import tseslint from 'typescript-eslint'
  * Base ESLint flat config shared across the monorepo.
  * @type {import('eslint').Linter.Config[]}
  */
-export const baseConfig = tseslint.config(
+export const baseConfig = defineConfig(
   {
     ignores: ['**/dist/**', '**/build/**', '**/node_modules/**'],
   },

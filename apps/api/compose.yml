@@ -1,0 +1,63 @@
+name: hashnode-clone
+
+services:
+  mongodb:
+    image: mongo:7.0
+    container_name: hashnode-mongodb
+    restart: unless-stopped
+    # Single-node replica set. MongoDB only allows multi-document transactions
+    # (and change streams) on a replica set, so even local dev runs one.
+    # `mongo-init` below turns it on automatically when you run `db:up`.
+    command: ['mongod', '--replSet', 'rs0', '--bind_ip_all']
+    ports:
+      - '27017:27017'
+    environment:
+      MONGO_INITDB_DATABASE: hashnode
+    volumes:
+      - mongo_data:/data/db
+    healthcheck:
+      test:
+        ['CMD', 'mongosh', '--quiet', '--eval', 'db.adminCommand("ping").ok']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  # One-shot helper: initiates the replica set (idempotent) and waits until a
+  # primary is elected so the API can immediately use transactions.
+  #
+  # The logic is inlined instead of mounted from scripts/ because Docker Desktop
+  # for macOS fails to bind-mount files from some host paths (notably external
+  # volumes such as /Volumes/<disk>) with "mkdir /host_mnt/...: file exists".
+  mongo-init:
+    image: mongo:7.0
+    container_name: hashnode-mongodb-init
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    restart: 'no'
+    entrypoint:
+      - bash
+      - -c
+      - |
+        set -e
+        mongosh --host mongodb:27017 --quiet --eval '
+          try {
+            rs.status();
+            print("Replica set already initialized");
+          } catch (error) {
+            if (error.code === 94) {
+              rs.initiate({ _id: "rs0", members: [{ _id: 0, host: "localhost:27017" }] });
+              print("Replica set initialized");
+            } else {
+              throw error;
+            }
+          }
+        '
+        until mongosh --host mongodb:27017 --quiet --eval 'db.hello().isWritablePrimary' | grep -q true; do
+          sleep 1
+        done
+        echo "Replica set primary is ready"
+
+volumes:
+  mongo_data:

@@ -1,8 +1,8 @@
 import { Router } from 'express'
-import { healthRouter } from './health'
-
-export const API_PREFIX = '/api'
+import { authRouter } from '#routes/auth'
+import { healthRouter } from '#routes/health'
 
 export const apiRouter = Router()
 
+apiRouter.use('/auth', authRouter)
 apiRouter.use('/health', healthRouter)

@@ -1,16 +1,16 @@
 import cookieParser from 'cookie-parser'
 import cors from 'cors'
 import express from 'express'
-import { pinoHttp } from 'pino-http'
+import { API_PREFIX } from '#config/constants'
 import { corsOptions } from '#config/cors'
-import { logger } from '#config/logger'
+import { httpLogger } from '#config/logger'
 import { errorHandler, notFoundHandler } from '#middlewares/error'
-import { API_PREFIX, apiRouter } from '#routes/index'
+import { apiRouter } from '#routes/index'
 
-export function createApp() {
+export function App() {
   const app = express()
 
-  app.use(pinoHttp({ logger }))
+  app.use(httpLogger)
   app.use(cors(corsOptions))
   app.use(express.json())
   app.use(cookieParser())

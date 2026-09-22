@@ -28,7 +28,7 @@ A full-stack developer blogging platform inspired by Hashnode. Authors write Mar
 3. Update `apps/api/.env` for local development. In particular, use the web dev-server origin:
 
    ```env
-   MONGO_URI=mongodb://localhost:27017/hashnode
+   MONGO_URI=mongodb://localhost:27017/hashnode?directConnection=true
    CORS_ORIGIN=http://localhost:3000
    ```
 
@@ -37,6 +37,8 @@ A full-stack developer blogging platform inspired by Hashnode. Authors write Mar
    ```bash
    pnpm --filter api db:up
    ```
+
+   The container runs as a **single-node replica set**, which MongoDB requires before it allows multi-document transactions. `db:up` also runs a one-shot `mongo-init` service that initiates the set and waits for a primary, so transactions are ready to use; no extra steps are needed.
 
 5. Run all workspace development processes:
 
@@ -77,13 +79,6 @@ The project will be deployed after the MVP works locally, using:
 | Web app (`apps/web`) | [Vercel](https://vercel.com)                 | TanStack Start builds through Nitro; select the `vercel` preset for the deployment target |
 | API (`apps/api`)     | [Railway](https://railway.com)               | Run the Express service from the compiled output with production environment variables    |
 | Database             | MongoDB Atlas (or a Railway MongoDB service) | Managed instance, not the local Docker container                                          |
-
-```mermaid
-flowchart LR
-  Browser["Browser"] -->|HTTPS| Vercel["Vercel<br/>apps/web"]
-  Vercel -->|"credentialed HTTPS JSON"| Railway["Railway<br/>apps/api"]
-  Railway -->|"Mongoose over TLS"| Mongo[("MongoDB")]
-```
 
 Vercel and Railway are separate origins, so the production cookie must use `SameSite=None; Secure` and the API’s `CORS_ORIGIN` must list the exact Vercel domain. No production URLs, secrets, or environment values are committed; the eventual deployment must use HTTPS, per-app environment variables, and a production MongoDB instance.
 
