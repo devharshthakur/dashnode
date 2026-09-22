@@ -1,5 +1,6 @@
 import bcrypt from 'bcryptjs'
-import { User } from '#models/user'
+import { isValidObjectId, type HydratedDocument } from 'mongoose'
+import { User, type UserDocument } from '#models/user'
 
 const PASSWORD_SALT_ROUNDS = 10
 
@@ -48,6 +49,22 @@ function isDuplicateKeyError(error: unknown): boolean {
 }
 
 /**
+ * Maps a user document to the shape safe to return over HTTP. The password
+ * hash is deliberately never selected into this type.
+ */
+function toSafeUser(user: HydratedDocument<UserDocument>): SafeUser {
+  return {
+    id: String(user._id),
+    name: user.name,
+    email: user.email,
+    bio: user.bio,
+    avatarUrl: user.avatarUrl,
+    createdAt: user.get('createdAt'),
+    updatedAt: user.get('updatedAt'),
+  }
+}
+
+/**
  * Creates a user with a bcrypt-hashed password.
  *
  * Email is normalized to lowercase so uniqueness is case-insensitive. The
@@ -66,15 +83,7 @@ export async function registerUser(
       password: passwordHash,
     })
 
-    return {
-      id: String(user._id),
-      name: user.name,
-      email: user.email,
-      bio: user.bio,
-      avatarUrl: user.avatarUrl,
-      createdAt: user.get('createdAt'),
-      updatedAt: user.get('updatedAt'),
-    }
+    return toSafeUser(user)
   } catch (error) {
     if (isDuplicateKeyError(error)) {
       throw new EmailTakenError()
@@ -99,13 +108,20 @@ export async function loginUser(input: LoginUserInput): Promise<SafeUser> {
     throw new InvalidCredentialsError()
   }
 
-  return {
-    id: String(user._id),
-    name: user.name,
-    email: user.email,
-    bio: user.bio,
-    avatarUrl: user.avatarUrl,
-    createdAt: user.get('createdAt'),
-    updatedAt: user.get('updatedAt'),
+  return toSafeUser(user)
+}
+
+/**
+ * Loads a user by id for session resolution. Returns `null` for unknown ids or
+ * ids that are not valid ObjectIds, so callers treat both as unauthenticated
+ * instead of surfacing a database cast error.
+ */
+export async function getUserById(userId: string): Promise<SafeUser | null> {
+  if (!isValidObjectId(userId)) {
+    return null
   }
+
+  const user = await User.findById(userId)
+
+  return user ? toSafeUser(user) : null
 }
