@@ -26,6 +26,7 @@ const envSchema = z.object({
 const parsedEnv = envSchema.safeParse(process.env)
 
 if (!parsedEnv.success) {
+  // `console` because the logger is built from the env parsed here.
   console.error('Invalid environment variables:')
   console.error(z.prettifyError(parsedEnv.error))
   process.exit(1)

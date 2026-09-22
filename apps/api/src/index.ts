@@ -9,7 +9,7 @@ async function main() {
   const app = App()
 
   const server = app.listen(env.PORT, () => {
-    logger.info(`API listening on http://localhost:${env.PORT}`)
+    logger.info(`API listening on port ${env.PORT} (${env.NODE_ENV})`)
   })
 
   async function shutdown(signal: NodeJS.Signals) {
