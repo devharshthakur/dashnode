@@ -28,7 +28,11 @@ function authCookieOptions(): CookieOptions {
 /** Verified token claims needed to authenticate and revoke a session. */
 export interface VerifiedSession {
   userId: string
-  /** Token id, blacklisted on logout. */
+  /**
+   * JWT ID (`jti`, RFC 7519): a unique id for this individual token, used as
+   * the revocation key so one session can be logged out without touching the
+   * user's other sessions.
+   */
   jti: string
   expiresAt: Date
 }

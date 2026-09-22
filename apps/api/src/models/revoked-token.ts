@@ -1,6 +1,7 @@
 import { Schema, model } from 'mongoose'
 
 export interface RevokedTokenDocument {
+  /** JWT ID (`jti`, RFC 7519) of the revoked session token. */
   jti: string
   expiresAt: Date
 }
