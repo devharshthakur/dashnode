@@ -1,5 +1,6 @@
 import { Router } from 'express'
 import type { NextFunction, Request, Response } from 'express'
+import type { PostListResponse } from '@packages/shared'
 
 import {
   InvalidPostIdError,
@@ -7,9 +8,18 @@ import {
   PostNotFoundError,
 } from '#errors/post'
 import { requireAuth } from '#middlewares/auth'
-import { createPostBodySchema, updatePostBodySchema } from '#schemas/post'
-import { createPost, deletePost, updatePost } from '#services/post'
-import { toPostDto } from '#utils/post'
+import {
+  createPostBodySchema,
+  listPostsQuerySchema,
+  updatePostBodySchema,
+} from '#schemas/post'
+import {
+  createPost,
+  deletePost,
+  listPublishedPosts,
+  updatePost,
+} from '#services/post'
+import { toPostCardDto, toPostDto } from '#utils/post'
 import { sendValidationError } from '#errors/route'
 
 export const postsRouter = Router()
@@ -36,6 +46,20 @@ function handlePostError(
 
   next(error)
 }
+
+postsRouter.get('/', async (req, res) => {
+  const parsed = listPostsQuerySchema.safeParse(req.query)
+
+  if (!parsed.success) {
+    sendValidationError(res, parsed.error)
+    return
+  }
+
+  const posts = await listPublishedPosts(parsed.data)
+  const body: PostListResponse = { posts: posts.map(toPostCardDto) }
+
+  res.status(200).json(body)
+})
 
 postsRouter.post('/', requireAuth, async (req, res) => {
   const parsed = createPostBodySchema.safeParse(req.body)
