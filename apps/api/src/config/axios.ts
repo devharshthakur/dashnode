@@ -29,15 +29,22 @@ http.interceptors.request.use((config: InternalAxiosRequestConfig) => {
 })
 
 // Log successful responses before they are returned to the caller.
-http.interceptors.response.use((response) => {
-  logger.debug(
-    {
-      method: response.config.method,
-      url: response.config.url,
-      status: response.status,
-    },
-    'Outbound HTTP response',
-  )
+http.interceptors.response.use(
+  (response) => {
+    logger.debug(
+      {
+        method: response.config.method,
+        url: response.config.url,
+        status: response.status,
+      },
+      'Outbound HTTP response',
+    )
 
-  return response
-})
+    return response
+  },
+  // Log failed responses before rethrowing.
+  (error: unknown) => {
+    logger.error({ err: error }, 'Outbound HTTP request failed')
+    return Promise.reject(error)
+  },
+)

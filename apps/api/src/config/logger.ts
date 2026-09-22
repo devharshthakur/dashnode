@@ -1,8 +1,27 @@
-import { pino, type Logger } from 'pino'
+import { randomUUID } from 'node:crypto'
 
+import { pino, type LoggerOptions } from 'pino'
+import { pinoHttp } from 'pino-http'
+
+import { API_PREFIX } from '#config/constants'
 import { env } from '#env'
 
 const isProduction = env.NODE_ENV === 'production'
+
+/**
+ * Sensitive fields masked from every log line. pino-http serializes the
+ * `cookie` request header and the `set-cookie` response header by default,
+ * both of which carry the session JWT.
+ */
+const redact: LoggerOptions['redact'] = {
+  paths: [
+    'req.headers.cookie',
+    'req.headers.authorization',
+    'res.headers["set-cookie"]',
+    'password',
+  ],
+  censor: '[REDACTED]',
+}
 
 /**
  * Shared Pino logger for the API.
@@ -16,15 +35,15 @@ const isProduction = env.NODE_ENV === 'production'
  * runtime; that path does not exist in the bundled `build/` output, which is
  * expected to run without `node_modules`.
  */
-async function createLogger(): Promise<Logger> {
+async function createLogger() {
   if (isProduction) {
-    return pino({ level: env.LOG_LEVEL })
+    return pino({ level: env.LOG_LEVEL, redact })
   }
 
   const { default: pinoPretty } = await import('pino-pretty')
 
   return pino(
-    { level: env.LOG_LEVEL },
+    { level: env.LOG_LEVEL, redact },
     pinoPretty({
       colorize: true,
       translateTime: 'SYS:standard',
@@ -34,3 +53,21 @@ async function createLogger(): Promise<Logger> {
 }
 
 export const logger = await createLogger()
+
+export const httpLogger = pinoHttp({
+  logger,
+  // Reuse an inbound request id so traces correlate across services.
+  genReqId: (req, res) => {
+    const existing = req.headers['x-request-id']
+
+    if (typeof existing === 'string' && existing.length > 0) {
+      return existing
+    }
+
+    const id = randomUUID()
+    res.setHeader('X-Request-Id', id)
+    return id
+  },
+  // Frequently polled health checks add log noise without diagnostic value.
+  autoLogging: { ignore: (req) => req.url === `${API_PREFIX}/health` },
+})
