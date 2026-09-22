@@ -1,5 +1,5 @@
-import type { Response } from 'express'
-import { SignJWT } from 'jose'
+import type { CookieOptions, Response } from 'express'
+import { SignJWT, jwtVerify } from 'jose'
 
 import { env } from '#env'
 
@@ -7,6 +7,21 @@ export const AUTH_COOKIE_NAME = 'token'
 const SESSION_TTL_SECONDS = 7 * 24 * 60 * 60
 
 const secret = new TextEncoder().encode(env.JWT_SECRET)
+
+/**
+ * Cookie attributes shared by set and clear. They must match exactly, otherwise
+ * the browser treats the cleared cookie as a different one.
+ */
+function authCookieOptions(): CookieOptions {
+  const isProduction = env.NODE_ENV === 'production'
+
+  return {
+    httpOnly: true,
+    secure: isProduction,
+    sameSite: isProduction ? 'none' : 'lax',
+    path: '/',
+  }
+}
 
 /**
  * Signs a short-lived session JWT whose subject is the user id. The token is
@@ -22,20 +37,35 @@ export async function signSessionToken(userId: string): Promise<string> {
 }
 
 /**
- * Sets the session cookie.
+ * Verifies a session JWT and returns its subject (the user id).
  *
- * Production is cross-site (Vercel web -> Railway API), which requires
- * `SameSite=None; Secure`. Local development runs over HTTP on the same site,
- * so `lax` keeps the cookie working without HTTPS.
+ * Throws when the token is malformed, expired, has an invalid signature, or
+ * carries no subject. Callers translate that into an unauthenticated response.
+ */
+export async function verifySessionToken(token: string): Promise<string> {
+  const { payload } = await jwtVerify(token, secret)
+
+  if (!payload.sub) {
+    throw new Error('Session token is missing a subject')
+  }
+
+  return payload.sub
+}
+
+/**
+ * Sets the session cookie.
  */
 export function setAuthCookie(res: Response, token: string): void {
-  const isProduction = env.NODE_ENV === 'production'
-
   res.cookie(AUTH_COOKIE_NAME, token, {
-    httpOnly: true,
-    secure: isProduction,
-    sameSite: isProduction ? 'none' : 'lax',
+    ...authCookieOptions(),
     maxAge: SESSION_TTL_SECONDS * 1000,
-    path: '/',
   })
+}
+
+/**
+ * Clears the session cookie so the browser stops sending it. Logout has to
+ * happen server-side because an HttpOnly cookie is invisible to JavaScript.
+ */
+export function clearAuthCookie(res: Response): void {
+  res.clearCookie(AUTH_COOKIE_NAME, authCookieOptions())
 }
