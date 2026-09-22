@@ -3,6 +3,7 @@
   "private": true,
   "type": "module",
   "imports": {
+    "#/*": "./src/*.ts",
     "#services/*": "./src/services/*.ts",
     "#middlewares/*": "./src/middlewares/*.ts",
     "#routes/*": "./src/routes/*.ts",
