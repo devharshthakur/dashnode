@@ -1,4 +1,4 @@
-import { createApp } from './app'
+import { App } from '#/app'
 import { connectDb, disconnectDb } from '#config/db'
 import { env } from '#env'
 import { logger } from '#config/logger'
@@ -6,7 +6,7 @@ import { logger } from '#config/logger'
 async function main() {
   await connectDb(env.MONGO_URI)
 
-  const app = createApp()
+  const app = App()
 
   const server = app.listen(env.PORT, () => {
     logger.info(`API listening on http://localhost:${env.PORT}`)

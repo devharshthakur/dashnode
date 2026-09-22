@@ -26,5 +26,9 @@ coverage
 # OS
 .DS_Store
 
+# IDE - track only settings.json
+.vscode/*
+!.vscode/settings.json
+
 # Local working notes (not for the repo)
 CHECKLIST.md

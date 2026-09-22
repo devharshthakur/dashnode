@@ -7,8 +7,16 @@ import {
   InvalidCredentialsError,
   loginUser,
   registerUser,
+  revokeToken,
 } from '#services/auth'
-import { clearAuthCookie, setAuthCookie, signSessionToken } from '#utils/auth'
+import {
+  AUTH_COOKIE_NAME,
+  clearAuthCookie,
+  setAuthCookie,
+  signSessionToken,
+  verifySessionToken,
+  type VerifiedSession,
+} from '#utils/auth'
 
 export const authRouter = Router()
 
@@ -72,11 +80,32 @@ authRouter.post('/login', async (req, res, next) => {
   }
 })
 
-authRouter.get('/me', requireAuth, (req, res) => {
-  res.status(200).json({ user: req.user })
+authRouter.post('/logout', async (req, res, next) => {
+  const token: unknown = req.cookies?.[AUTH_COOKIE_NAME]
+  let session: VerifiedSession | null = null
+
+  if (typeof token === 'string' && token.length > 0) {
+    try {
+      session = await verifySessionToken(token)
+    } catch {
+      // Invalid or expired token: nothing left to revoke.
+      session = null
+    }
+  }
+
+  try {
+    if (session) {
+      await revokeToken(session.jti, session.expiresAt)
+    }
+
+    clearAuthCookie(res)
+    res.status(200).json({ message: 'Logged out' })
+  } catch (error) {
+    // Token is not revoked yet: keep the cookie so logout can be retried.
+    next(error)
+  }
 })
 
-authRouter.post('/logout', (_req, res) => {
-  clearAuthCookie(res)
-  res.status(200).json({ message: 'Logged out' })
+authRouter.get('/me', requireAuth, (req, res) => {
+  res.status(200).json({ user: req.user })
 })

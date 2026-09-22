@@ -1,3 +1,5 @@
+import { randomUUID } from 'node:crypto'
+
 import type { CookieOptions, Response } from 'express'
 import { SignJWT, jwtVerify } from 'jose'
 
@@ -23,6 +25,14 @@ function authCookieOptions(): CookieOptions {
   }
 }
 
+/** Verified token claims needed to authenticate and revoke a session. */
+export interface VerifiedSession {
+  userId: string
+  /** Token id, blacklisted on logout. */
+  jti: string
+  expiresAt: Date
+}
+
 /**
  * Signs a short-lived session JWT whose subject is the user id. The token is
  * meant to travel in the HttpOnly auth cookie, never in application state.
@@ -31,25 +41,42 @@ export async function signSessionToken(userId: string): Promise<string> {
   return new SignJWT()
     .setProtectedHeader({ alg: 'HS256' })
     .setSubject(userId)
+    .setJti(randomUUID())
     .setIssuedAt()
     .setExpirationTime(`${SESSION_TTL_SECONDS}s`)
     .sign(secret)
 }
 
 /**
- * Verifies a session JWT and returns its subject (the user id).
+ * Verifies a session JWT and returns its subject (the user id) plus the claims
+ * needed to revoke it.
  *
  * Throws when the token is malformed, expired, has an invalid signature, or
- * carries no subject. Callers translate that into an unauthenticated response.
+ * carries no subject, id, or expiry. Callers translate that into an
+ * unauthenticated response.
  */
-export async function verifySessionToken(token: string): Promise<string> {
+export async function verifySessionToken(
+  token: string,
+): Promise<VerifiedSession> {
   const { payload } = await jwtVerify(token, secret)
 
   if (!payload.sub) {
     throw new Error('Session token is missing a subject')
   }
 
-  return payload.sub
+  if (!payload.jti) {
+    throw new Error('Session token is missing an id')
+  }
+
+  if (typeof payload.exp !== 'number') {
+    throw new Error('Session token is missing an expiration')
+  }
+
+  return {
+    userId: payload.sub,
+    jti: payload.jti,
+    expiresAt: new Date(payload.exp * 1000),
+  }
 }
 
 /**

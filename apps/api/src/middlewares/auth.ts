@@ -1,11 +1,12 @@
 import type { NextFunction, Request, Response } from 'express'
 
-import { getUserById } from '#services/auth'
+import { getUserById, isTokenRevoked } from '#services/auth'
 import { AUTH_COOKIE_NAME, verifySessionToken } from '#utils/auth'
 
 /**
- * Rejects the request unless it carries a valid session cookie whose user still
- * exists. On success it attaches the safe user to `req.user`.
+ * Rejects the request unless it carries a valid session cookie that has not
+ * been blacklisted and whose user still exists. On success it attaches the safe
+ * user to `req.user`.
  *
  * Every protected route must use this middleware: route guards in the web app
  * are user-experience aids, not an authorization boundary.
@@ -23,7 +24,13 @@ export async function requireAuth(
   }
 
   try {
-    const userId = await verifySessionToken(token)
+    const { userId, jti } = await verifySessionToken(token)
+
+    if (await isTokenRevoked(jti)) {
+      res.status(401).json({ error: 'Unauthorized' })
+      return
+    }
+
     const user = await getUserById(userId)
 
     if (!user) {

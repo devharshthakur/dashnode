@@ -7,7 +7,7 @@ import { logger } from '#config/logger'
 import { errorHandler, notFoundHandler } from '#middlewares/error'
 import { API_PREFIX, apiRouter } from '#routes/index'
 
-export function createApp() {
+export function App() {
   const app = express()
 
   app.use(pinoHttp({ logger }))
