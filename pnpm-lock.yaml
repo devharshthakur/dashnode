@@ -224,6 +224,9 @@ importers:
       '@packages/prettier-config':
         specifier: workspace:*
         version: link:../../packages/prettier-config
+      '@packages/shared':
+        specifier: workspace:*
+        version: link:../../packages/shared
       '@packages/typescript-config':
         specifier: workspace:*
         version: link:../../packages/typescript-config
@@ -366,6 +369,9 @@ importers:
         specifier: 4.6.5
         version: 4.6.5
     devDependencies:
+      '@packages/shared':
+        specifier: workspace:*
+        version: link:../../packages/shared
       '@packages/typescript-config':
         specifier: workspace:*
         version: link:../../packages/typescript-config
@@ -437,6 +443,27 @@ importers:
         version: 8.70.0(eslint@10.11.0(jiti@2.7.0)(supports-color@5.5.0))(supports-color@5.5.0)(typescript@6.0.3)
 
   packages/prettier-config: {}
+
+  packages/shared:
+    devDependencies:
+      '@packages/eslint-config':
+        specifier: workspace:*
+        version: link:../eslint-config
+      '@packages/prettier-config':
+        specifier: workspace:*
+        version: link:../prettier-config
+      '@packages/typescript-config':
+        specifier: workspace:*
+        version: link:../typescript-config
+      eslint:
+        specifier: 10.11.0
+        version: 10.11.0(jiti@2.7.0)(supports-color@5.5.0)
+      prettier:
+        specifier: 3.9.8
+        version: 3.9.8
+      typescript:
+        specifier: 6.0.3
+        version: 6.0.3
 
   packages/typescript-config: {}
 

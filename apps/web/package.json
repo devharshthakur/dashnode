@@ -52,6 +52,7 @@
     "zod": "4.6.5"
   },
   "devDependencies": {
+    "@packages/shared": "workspace:*",
     "@packages/typescript-config": "workspace:*",
     "@rolldown/plugin-babel": "0.2.4",
     "@tailwindcss/typography": "0.5.20",

@@ -1,0 +1,7 @@
+{
+  "extends": "@packages/typescript-config/node.json",
+  "compilerOptions": {
+    "types": []
+  },
+  "include": ["src"]
+}
