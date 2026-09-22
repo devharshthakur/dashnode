@@ -1,5 +1,6 @@
 import bcrypt from 'bcryptjs'
 import { isValidObjectId, type HydratedDocument } from 'mongoose'
+import { RevokedToken } from '#models/revoked-token'
 import { User, type UserDocument } from '#models/user'
 
 const PASSWORD_SALT_ROUNDS = 10
@@ -124,4 +125,23 @@ export async function getUserById(userId: string): Promise<SafeUser | null> {
   const user = await User.findById(userId)
 
   return user ? toSafeUser(user) : null
+}
+
+/**
+ * Blacklists a token id until the token's own expiry. The upsert keeps
+ * repeated logout with the same token harmless.
+ */
+export async function revokeToken(jti: string, expiresAt: Date): Promise<void> {
+  await RevokedToken.updateOne(
+    { jti },
+    { $setOnInsert: { expiresAt } },
+    { upsert: true },
+  )
+}
+
+/** True when a token id was blacklisted by logout. */
+export async function isTokenRevoked(jti: string): Promise<boolean> {
+  const revoked = await RevokedToken.exists({ jti })
+
+  return revoked !== null
 }
