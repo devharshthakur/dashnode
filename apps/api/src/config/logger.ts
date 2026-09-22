@@ -1,5 +1,9 @@
-import { pino, type LoggerOptions } from 'pino'
+import { randomUUID } from 'node:crypto'
 
+import { pino, type LoggerOptions } from 'pino'
+import { pinoHttp } from 'pino-http'
+
+import { API_PREFIX } from '#config/constants'
 import { env } from '#env'
 
 const isProduction = env.NODE_ENV === 'production'
@@ -49,3 +53,21 @@ async function createLogger() {
 }
 
 export const logger = await createLogger()
+
+export const httpLogger = pinoHttp({
+  logger,
+  // Reuse an inbound request id so traces correlate across services.
+  genReqId: (req, res) => {
+    const existing = req.headers['x-request-id']
+
+    if (typeof existing === 'string' && existing.length > 0) {
+      return existing
+    }
+
+    const id = randomUUID()
+    res.setHeader('X-Request-Id', id)
+    return id
+  },
+  // Frequently polled health checks add log noise without diagnostic value.
+  autoLogging: { ignore: (req) => req.url === `${API_PREFIX}/health` },
+})
