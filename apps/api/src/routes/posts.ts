@@ -1,30 +1,18 @@
 import { Router } from 'express'
 import type { NextFunction, Request, Response } from 'express'
-import type { ZodError } from 'zod'
 
-import { requireAuth } from '#middlewares/auth'
-import { createPostBodySchema, updatePostBodySchema } from '#schemas/post'
 import {
-  createPost,
-  deletePost,
   InvalidPostIdError,
   PostForbiddenError,
   PostNotFoundError,
-  updatePost,
-} from '#services/post'
-import { toPostDto } from '#utils/post-dto'
+} from '#errors/post'
+import { requireAuth } from '#middlewares/auth'
+import { createPostBodySchema, updatePostBodySchema } from '#schemas/post'
+import { createPost, deletePost, updatePost } from '#services/post'
+import { toPostDto } from '#utils/post'
+import { sendValidationError } from '#errors/route'
 
 export const postsRouter = Router()
-
-function sendValidationError(res: Response, error: ZodError): void {
-  res.status(400).json({
-    error: 'Validation Error',
-    details: error.issues.map((issue) => ({
-      path: issue.path.join('.'),
-      message: issue.message,
-    })),
-  })
-}
 
 function handlePostError(
   res: Response,

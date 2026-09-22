@@ -1,14 +1,9 @@
 import { Router } from 'express'
 
+import { EmailTakenError, InvalidCredentialsError } from '#errors/auth'
 import { requireAuth } from '#middlewares/auth'
 import { loginBodySchema, registerBodySchema } from '#schemas/auth'
-import {
-  EmailTakenError,
-  InvalidCredentialsError,
-  loginUser,
-  registerUser,
-  revokeToken,
-} from '#services/auth'
+import { loginUser, registerUser, revokeToken } from '#services/auth'
 import {
   AUTH_COOKIE_NAME,
   clearAuthCookie,

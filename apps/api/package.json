@@ -4,6 +4,7 @@
   "type": "module",
   "imports": {
     "#/*": "./src/*.ts",
+    "#errors/*": "./src/errors/*.ts",
     "#services/*": "./src/services/*.ts",
     "#middlewares/*": "./src/middlewares/*.ts",
     "#routes/*": "./src/routes/*.ts",

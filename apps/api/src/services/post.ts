@@ -6,33 +6,17 @@ import {
 } from 'mongoose'
 import type { CreatePostInput, UpdatePostInput } from '@packages/shared'
 
+import {
+  InvalidPostIdError,
+  PostForbiddenError,
+  PostNotFoundError,
+} from '#errors/post'
 import { Post, type PostDocument } from '#models/post'
 import { Tag } from '#models/tag'
 import { generateUniqueSlug, slugify } from '#utils/slug'
 import { withTransaction } from '#utils/transaction'
 
 const EXCERPT_MAX_LENGTH = 250
-
-export class InvalidPostIdError extends Error {
-  constructor() {
-    super('Invalid post id')
-    this.name = 'InvalidPostIdError'
-  }
-}
-
-export class PostNotFoundError extends Error {
-  constructor() {
-    super('Post not found')
-    this.name = 'PostNotFoundError'
-  }
-}
-
-export class PostForbiddenError extends Error {
-  constructor() {
-    super('You can only modify your own posts')
-    this.name = 'PostForbiddenError'
-  }
-}
 
 /**
  * Builds the feed preview from raw Markdown when the client did not supply an
