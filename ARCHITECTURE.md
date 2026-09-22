@@ -40,6 +40,7 @@ apps/
 packages/
   eslint-config/               Shared lint configuration only
   prettier-config/             Shared formatting configuration only
+  shared/                      Shared API contract types only
   typescript-config/           Shared compiler configuration only
 ```
 

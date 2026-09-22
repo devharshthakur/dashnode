@@ -37,7 +37,6 @@ const postSchema = new Schema<PostDocument>(
       type: String,
       default: '',
       maxlength: 250,
-      trim: true,
     },
     coverImage: {
       type: String,

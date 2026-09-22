@@ -12,7 +12,7 @@ export function App() {
 
   app.use(httpLogger)
   app.use(cors(corsOptions))
-  app.use(express.json())
+  app.use(express.json({ limit: '1mb' }))
   app.use(cookieParser())
   app.use(API_PREFIX, apiRouter)
   app.use(notFoundHandler)
