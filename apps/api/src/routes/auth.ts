@@ -1,5 +1,6 @@
 import { Router } from 'express'
 
+import { requireAuth } from '#middlewares/auth'
 import { loginBodySchema, registerBodySchema } from '#schemas/auth'
 import {
   EmailTakenError,
@@ -7,7 +8,7 @@ import {
   loginUser,
   registerUser,
 } from '#services/auth'
-import { setAuthCookie, signSessionToken } from '#utils/auth'
+import { clearAuthCookie, setAuthCookie, signSessionToken } from '#utils/auth'
 
 export const authRouter = Router()
 
@@ -71,6 +72,11 @@ authRouter.post('/login', async (req, res, next) => {
   }
 })
 
-authRouter.get('/me', (_req, res) => {
-  res.status(501).json({ error: 'Not Implemented' })
+authRouter.get('/me', requireAuth, (req, res) => {
+  res.status(200).json({ user: req.user })
+})
+
+authRouter.post('/logout', (_req, res) => {
+  clearAuthCookie(res)
+  res.status(200).json({ message: 'Logged out' })
 })
