@@ -80,10 +80,6 @@ authRouter.post('/login', async (req, res, next) => {
   }
 })
 
-authRouter.get('/me', requireAuth, (req, res) => {
-  res.status(200).json({ user: req.user })
-})
-
 authRouter.post('/logout', async (req, res, next) => {
   const token: unknown = req.cookies?.[AUTH_COOKIE_NAME]
   let session: VerifiedSession | null = null
@@ -108,4 +104,8 @@ authRouter.post('/logout', async (req, res, next) => {
     // Token is not revoked yet: keep the cookie so logout can be retried.
     next(error)
   }
+})
+
+authRouter.get('/me', requireAuth, (req, res) => {
+  res.status(200).json({ user: req.user })
 })
