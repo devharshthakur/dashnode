@@ -211,6 +211,9 @@ importers:
       pino-http:
         specifier: 11.0.0
         version: 11.0.0
+      slugify:
+        specifier: 1.6.9
+        version: 1.6.9
       zod:
         specifier: 4.6.5
         version: 4.6.5
@@ -5235,6 +5238,10 @@ packages:
 
   sisteransi@1.0.5:
     resolution: {integrity: sha512-bLGGlR1QxBcynn2d5YmDX4MGjlZvy2MRBDRNHLJ8VI6l6+9FUiyTFNJ0IveOSP0bcXgVDPRcfGqA0pjaqUpfVg==}
+
+  slugify@1.6.9:
+    resolution: {integrity: sha512-vZ7rfeehZui7wQs438JXBckYLkIIdfHOXsaVEUMyS5fHo1483l1bMdo0EDSWYclY0yZKFOipDy4KHuKs6ssvdg==}
+    engines: {node: '>=8.0.0'}
 
   smart-buffer@4.2.0:
     resolution: {integrity: sha512-94hK0Hh8rPqQl2xXc3HsaBoOXKV20MToPkcXvwbISWLEs+64sBq5kFgn2kJDHb1Pry9yrP0dxrCI9RRci7RXKg==}
@@ -10918,6 +10925,8 @@ snapshots:
       semver: 7.8.5
 
   sisteransi@1.0.5: {}
+
+  slugify@1.6.9: {}
 
   smart-buffer@4.2.0: {}
 
