@@ -73,3 +73,8 @@ export type UpdatePostInput = Partial<CreatePostInput>
 export interface PostResponse {
   post: PostDto
 }
+
+/** Public feed response: newest-first published post cards. */
+export interface PostListResponse {
+  posts: PostCardDto[]
+}
