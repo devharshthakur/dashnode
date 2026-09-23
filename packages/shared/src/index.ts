@@ -21,6 +21,14 @@ export interface AuthorDto {
   avatarUrl: string
 }
 
+/** Public-safe user profile; never includes email or password data. */
+export interface UserProfileDto {
+  id: string
+  name: string
+  bio: string
+  avatarUrl: string
+}
+
 /**
  * Canonical post resource returned by the write endpoints. Relations are
  * ObjectId strings; the read endpoints return the populated projections below.
@@ -76,5 +84,10 @@ export interface PostResponse {
 
 /** Public feed response: newest-first published post cards. */
 export interface PostListResponse {
+  posts: PostCardDto[]
+}
+
+export interface UserProfileResponse {
+  user: UserProfileDto
   posts: PostCardDto[]
 }
