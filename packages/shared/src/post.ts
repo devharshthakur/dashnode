@@ -60,3 +60,8 @@ export interface PostResponse {
 export interface PostListResponse {
   posts: PostCardDto[]
 }
+
+/** Public post detail response with the full raw Markdown body. */
+export interface PostDetailResponse {
+  post: PostDetailDto
+}

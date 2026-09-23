@@ -18,6 +18,7 @@ import {
   type PopulatedAuthor,
   type PopulatedTag,
   type PostCardSource,
+  type PostDetailSource,
 } from '#utils/post'
 import { generateUniqueSlug, slugify } from '#utils/slug'
 import { withTransaction } from '#utils/transaction'
@@ -214,4 +215,20 @@ export async function listPublishedPosts(
     .lean()
 
   return posts
+}
+
+/** Loads one public post by slug; drafts are indistinguishable from missing posts. */
+export async function getPublishedPostBySlug(
+  slug: string,
+): Promise<PostDetailSource> {
+  const post = await Post.findOne({ slug, status: 'published' })
+    .populate<{ author: PopulatedAuthor }>('author', 'name avatarUrl')
+    .populate<{ tags: PopulatedTag[] }>('tags', 'name slug')
+    .lean()
+
+  if (!post) {
+    throw new PostNotFoundError()
+  }
+
+  return post
 }
