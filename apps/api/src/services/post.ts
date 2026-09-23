@@ -217,6 +217,17 @@ export async function listPublishedPosts(
   return posts
 }
 
+/** Loads all posts owned by a user, newest first, for the private dashboard. */
+export async function listUserPosts(userId: string): Promise<PostCardSource[]> {
+  const posts = await Post.find({ author: userId })
+    .sort({ createdAt: -1 })
+    .populate<{ author: PopulatedAuthor }>('author', 'name avatarUrl')
+    .populate<{ tags: PopulatedTag[] }>('tags', 'name slug')
+    .lean()
+
+  return posts
+}
+
 /** Loads one public post by slug; drafts are indistinguishable from missing posts. */
 export async function getPublishedPostBySlug(
   slug: string,
