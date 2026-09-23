@@ -16,7 +16,6 @@
   "chosenAddOns": [
     "eslint",
     "nitro",
-    "ai",
     "compiler",
     "shadcn",
     "tanstack-query",
