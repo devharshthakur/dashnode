@@ -50,7 +50,7 @@ async function resolveTagIds(
     const tag = await Tag.findOneAndUpdate(
       { slug },
       { $setOnInsert: { name: slug, slug } },
-      { upsert: true, new: true, session },
+      { upsert: true, returnDocument: 'after', session },
     ).orFail()
 
     tagIds.push(tag._id)
