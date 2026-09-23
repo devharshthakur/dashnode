@@ -24,7 +24,7 @@ Items follow the [REST API requirements](../../PRD.md#5-rest-api-specification).
 - [x] `POST /api/posts` — create a draft or published post.
 - [x] `PUT /api/posts/:id` — update the author's own post.
 - [x] `DELETE /api/posts/:id` — delete the author's own post.
-- [ ] `GET /api/posts/mine` — list the signed-in user's drafts and published posts.
+- [x] `GET /api/posts/mine` — list the signed-in user's drafts and published posts.
 
 ### Tags and users
 
