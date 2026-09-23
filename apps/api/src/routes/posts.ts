@@ -1,6 +1,6 @@
 import { Router } from 'express'
 import type { NextFunction, Request, Response } from 'express'
-import type { PostListResponse } from '@packages/shared'
+import type { PostDetailResponse, PostListResponse } from '@packages/shared'
 
 import {
   InvalidPostIdError,
@@ -16,10 +16,11 @@ import {
 import {
   createPost,
   deletePost,
+  getPublishedPostBySlug,
   listPublishedPosts,
   updatePost,
 } from '#services/post'
-import { toPostCardDto, toPostDto } from '#utils/post'
+import { toPostCardDto, toPostDetailDto, toPostDto } from '#utils/post'
 import { sendValidationError } from '#errors/route'
 
 export const postsRouter = Router()
@@ -59,6 +60,17 @@ postsRouter.get('/', async (req, res) => {
   const body: PostListResponse = { posts: posts.map(toPostCardDto) }
 
   res.status(200).json(body)
+})
+
+postsRouter.get('/:slug', async (req: Request<{ slug: string }>, res, next) => {
+  try {
+    const post = await getPublishedPostBySlug(req.params.slug)
+    const body: PostDetailResponse = { post: toPostDetailDto(post) }
+
+    res.status(200).json(body)
+  } catch (error) {
+    handlePostError(res, next, error)
+  }
 })
 
 postsRouter.post('/', requireAuth, async (req, res) => {
