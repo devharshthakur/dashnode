@@ -1,4 +1,9 @@
-import type { PostCardDto, PostDto, PostStatus } from '@packages/shared'
+import type {
+  PostCardDto,
+  PostDetailDto,
+  PostDto,
+  PostStatus,
+} from '@packages/shared'
 import type { HydratedDocument, Types } from 'mongoose'
 
 import type { PostDocument } from '#models/post'
@@ -54,6 +59,11 @@ export interface PostCardSource {
   updatedAt: Date
 }
 
+/** Lean post detail with populated author and tag projections. */
+export interface PostDetailSource extends PostCardSource {
+  content: string
+}
+
 /**
  * Maps a populated post to the public feed-card contract: author and tags as
  * embedded summaries, no Markdown body, ISO timestamps.
@@ -78,5 +88,13 @@ export function toPostCardDto(post: PostCardSource): PostCardDto {
     })),
     createdAt: post.createdAt.toISOString(),
     updatedAt: post.updatedAt.toISOString(),
+  }
+}
+
+/** Maps a populated post detail while preserving its raw Markdown body. */
+export function toPostDetailDto(post: PostDetailSource): PostDetailDto {
+  return {
+    ...toPostCardDto(post),
+    content: post.content,
   }
 }
