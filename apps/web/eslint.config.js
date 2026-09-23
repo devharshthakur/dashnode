@@ -1,9 +1,18 @@
 //  @ts-check
 
 import { tanstackConfig } from '@tanstack/eslint-config'
+import { plugin as shadcn } from '@shadcn/lint'
 
 export default [
   ...tanstackConfig,
+  {
+    files: ['**/*.{js,jsx,ts,tsx}'],
+    plugins: { shadcn },
+    rules: {
+      'shadcn/no-arbitrary-values': 'error',
+      'shadcn/no-restyle': ['error', { allow: ['layout'] }],
+    },
+  },
   {
     rules: {
       'import/no-cycle': 'off',
