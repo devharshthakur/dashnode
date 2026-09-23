@@ -56,7 +56,7 @@ export interface PostResponse {
   post: PostDto
 }
 
-/** Public feed response: newest-first published post cards. */
+/** Post list response containing populated post cards. */
 export interface PostListResponse {
   posts: PostCardDto[]
 }

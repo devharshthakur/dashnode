@@ -50,7 +50,7 @@ async function resolveTagIds(
     const tag = await Tag.findOneAndUpdate(
       { slug },
       { $setOnInsert: { name: slug, slug } },
-      { upsert: true, new: true, session },
+      { upsert: true, returnDocument: 'after', session },
     ).orFail()
 
     tagIds.push(tag._id)
@@ -209,6 +209,17 @@ export async function listPublishedPosts(
   }
 
   const posts = await Post.find(filter)
+    .sort({ createdAt: -1 })
+    .populate<{ author: PopulatedAuthor }>('author', 'name avatarUrl')
+    .populate<{ tags: PopulatedTag[] }>('tags', 'name slug')
+    .lean()
+
+  return posts
+}
+
+/** Loads all posts owned by a user, newest first, for the private dashboard. */
+export async function listUserPosts(userId: string): Promise<PostCardSource[]> {
+  const posts = await Post.find({ author: userId })
     .sort({ createdAt: -1 })
     .populate<{ author: PopulatedAuthor }>('author', 'name avatarUrl')
     .populate<{ tags: PopulatedTag[] }>('tags', 'name slug')
