@@ -18,6 +18,7 @@ import {
   deletePost,
   getPublishedPostBySlug,
   listPublishedPosts,
+  listUserPosts,
   updatePost,
 } from '#services/post'
 import { toPostCardDto, toPostDetailDto, toPostDto } from '#utils/post'
@@ -57,6 +58,13 @@ postsRouter.get('/', async (req, res) => {
   }
 
   const posts = await listPublishedPosts(parsed.data)
+  const body: PostListResponse = { posts: posts.map(toPostCardDto) }
+
+  res.status(200).json(body)
+})
+
+postsRouter.get('/mine', requireAuth, async (req, res) => {
+  const posts = await listUserPosts(req.user!.id)
   const body: PostListResponse = { posts: posts.map(toPostCardDto) }
 
   res.status(200).json(body)
