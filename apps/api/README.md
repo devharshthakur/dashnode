@@ -20,7 +20,7 @@ Items follow the [REST API requirements](../../PRD.md#5-rest-api-specification).
 ### Posts
 
 - [x] `GET /api/posts` — list published posts; supports title search and tag filtering.
-- [ ] `GET /api/posts/:slug` — return a published post by slug.
+- [x] `GET /api/posts/:slug` — return a published post by slug.
 - [x] `POST /api/posts` — create a draft or published post.
 - [x] `PUT /api/posts/:id` — update the author's own post.
 - [x] `DELETE /api/posts/:id` — delete the author's own post.
