@@ -17,3 +17,8 @@ minimumReleaseAge: 1440
 update:
   ignoreDeps:
     - typescript
+
+saveExact: true
+engineStrict: true
+autoInstallPeers: true
+strictPeerDependencies: true
