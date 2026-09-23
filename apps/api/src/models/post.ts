@@ -13,6 +13,8 @@ export interface PostDocument {
   status: PostStatus
   author: Types.ObjectId
   tags: Types.ObjectId[]
+  createdAt: Date
+  updatedAt: Date
 }
 
 const postSchema = new Schema<PostDocument>(

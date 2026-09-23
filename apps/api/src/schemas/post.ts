@@ -31,3 +31,8 @@ export const createPostBodySchema = postBodySchema.extend({
 })
 
 export const updatePostBodySchema = postBodySchema.partial()
+
+export const listPostsQuerySchema = z.object({
+  search: z.string().trim().min(1).max(200).optional(),
+  tag: z.string().trim().min(1).max(50).optional(),
+})

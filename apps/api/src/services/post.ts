@@ -2,6 +2,7 @@ import {
   isValidObjectId,
   type ClientSession,
   type HydratedDocument,
+  type QueryFilter,
   type Types,
 } from 'mongoose'
 import type { CreatePostInput, UpdatePostInput } from '@packages/shared'
@@ -13,6 +14,11 @@ import {
 } from '#errors/post'
 import { Post, type PostDocument } from '#models/post'
 import { Tag } from '#models/tag'
+import {
+  type PopulatedAuthor,
+  type PopulatedTag,
+  type PostCardSource,
+} from '#utils/post'
 import { generateUniqueSlug, slugify } from '#utils/slug'
 import { withTransaction } from '#utils/transaction'
 
@@ -168,4 +174,44 @@ export async function deletePost(
   const post = await loadOwnedPost(postId, userId)
 
   await post.deleteOne()
+}
+
+export interface ListPublishedPostsQuery {
+  /** Keyword matched against post titles via the title text index. */
+  search?: string
+  /** Tag slug; an unknown slug yields an empty feed, never an error. */
+  tag?: string
+}
+
+/**
+ * Loads the public feed: published posts only, newest first. The status filter
+ * is applied before any search or tag clause so drafts can never leak into a
+ * public response. Author and tags are populated for feed cards.
+ */
+export async function listPublishedPosts(
+  query: ListPublishedPostsQuery,
+): Promise<PostCardSource[]> {
+  const filter: QueryFilter<PostDocument> = { status: 'published' }
+
+  if (query.search !== undefined) {
+    filter.$text = { $search: query.search }
+  }
+
+  if (query.tag !== undefined) {
+    const tag = await Tag.findOne({ slug: query.tag }).lean()
+
+    if (!tag) {
+      return []
+    }
+
+    filter.tags = tag._id
+  }
+
+  const posts = await Post.find(filter)
+    .sort({ createdAt: -1 })
+    .populate<{ author: PopulatedAuthor }>('author', 'name avatarUrl')
+    .populate<{ tags: PopulatedTag[] }>('tags', 'name slug')
+    .lean()
+
+  return posts
 }

@@ -1,5 +1,5 @@
-import type { PostDto } from '@packages/shared'
-import type { HydratedDocument } from 'mongoose'
+import type { PostCardDto, PostDto, PostStatus } from '@packages/shared'
+import type { HydratedDocument, Types } from 'mongoose'
 
 import type { PostDocument } from '#models/post'
 
@@ -20,5 +20,63 @@ export function toPostDto(post: HydratedDocument<PostDocument>): PostDto {
     tags: post.tags.map((tag) => String(tag)),
     createdAt: (post.get('createdAt') as Date).toISOString(),
     updatedAt: (post.get('updatedAt') as Date).toISOString(),
+  }
+}
+
+/** Author projection populated onto public post reads. */
+export interface PopulatedAuthor {
+  _id: Types.ObjectId
+  name: string
+  avatarUrl: string
+}
+
+/** Tag projection populated onto public post reads. */
+export interface PopulatedTag {
+  _id: Types.ObjectId
+  name: string
+  slug: string
+}
+
+/**
+ * Lean post with populated relations, as returned by the public read queries:
+ * feed-card fields only, timestamps as Date instances.
+ */
+export interface PostCardSource {
+  _id: Types.ObjectId
+  title: string
+  slug: string
+  excerpt: string
+  coverImage: string
+  status: PostStatus
+  author: PopulatedAuthor
+  tags: PopulatedTag[]
+  createdAt: Date
+  updatedAt: Date
+}
+
+/**
+ * Maps a populated post to the public feed-card contract: author and tags as
+ * embedded summaries, no Markdown body, ISO timestamps.
+ */
+export function toPostCardDto(post: PostCardSource): PostCardDto {
+  return {
+    id: String(post._id),
+    title: post.title,
+    slug: post.slug,
+    excerpt: post.excerpt,
+    coverImage: post.coverImage,
+    status: post.status,
+    author: {
+      id: String(post.author._id),
+      name: post.author.name,
+      avatarUrl: post.author.avatarUrl,
+    },
+    tags: post.tags.map((tag) => ({
+      id: String(tag._id),
+      name: tag.name,
+      slug: tag.slug,
+    })),
+    createdAt: post.createdAt.toISOString(),
+    updatedAt: post.updatedAt.toISOString(),
   }
 }
