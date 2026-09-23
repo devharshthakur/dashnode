@@ -53,10 +53,13 @@
   },
   "devDependencies": {
     "@packages/prettier-config": "workspace:*",
+    "@types/node": "26.6.2",
+    "eslint": "10.11.0",
     "husky": "9.1.7",
     "lint-staged": "17.5.1",
     "prettier": "3.9.8",
-    "turbo": "2.11.2"
+    "turbo": "2.11.2",
+    "typescript": "6.0.3"
   },
   "engines": {
     "node": ">=24.0.0"
