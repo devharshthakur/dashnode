@@ -31,7 +31,7 @@ Items follow the [REST API requirements](../../PRD.md#5-rest-api-specification).
 - [x] `GET /api/tags` — list tags with counts of published posts using each tag.
 - [x] `GET /api/tags/:slug/posts` — list published posts for a tag.
 - [x] `GET /api/users/:id` — return a public profile and its published posts.
-- [ ] `PUT /api/users/me` — update the signed-in user's profile.
+- [x] `PUT /api/users/me` — update the signed-in user's profile.
 
 Unlike the PRD's bearer-token flow, this API sends signed JWTs in HttpOnly cookies. Protected routes verify the session; public post results exclude drafts, update and delete enforce ownership on the server, and user responses omit password hashes. Routes, validation schemas, services, and models are organized under `src/`.
 

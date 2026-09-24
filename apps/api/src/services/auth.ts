@@ -17,6 +17,12 @@ export interface RegisterUserInput {
   password: string
 }
 
+export interface UpdateUserProfileInput {
+  name: string
+  bio: string
+  avatarUrl: string
+}
+
 export interface SafeUser {
   id: string
   name: string
@@ -110,6 +116,23 @@ export async function getUserById(userId: string): Promise<SafeUser | null> {
   }
 
   const user = await User.findById(userId)
+
+  return user ? toSafeUser(user) : null
+}
+
+/** Updates the editable profile fields and returns the password-free user. */
+export async function updateUserProfile(
+  userId: string,
+  input: UpdateUserProfileInput,
+): Promise<SafeUser | null> {
+  const user = await User.findByIdAndUpdate(
+    userId,
+    { $set: input },
+    {
+      returnDocument: 'after',
+      runValidators: true,
+    },
+  )
 
   return user ? toSafeUser(user) : null
 }
