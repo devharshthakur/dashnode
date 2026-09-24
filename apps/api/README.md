@@ -29,7 +29,7 @@ Items follow the [REST API requirements](../../PRD.md#5-rest-api-specification).
 ### Tags and users
 
 - [x] `GET /api/tags` — list tags with counts of published posts using each tag.
-- [ ] `GET /api/tags/:slug/posts` — list published posts for a tag. Tag filtering is currently available through `GET /api/posts?tag=...` instead.
+- [x] `GET /api/tags/:slug/posts` — list published posts for a tag.
 - [x] `GET /api/users/:id` — return a public profile and its published posts.
 - [ ] `PUT /api/users/me` — update the signed-in user's profile.
 
