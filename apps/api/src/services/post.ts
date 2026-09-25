@@ -243,3 +243,27 @@ export async function getPublishedPostBySlug(
 
   return post
 }
+
+export async function getOwnedPostById(
+  postId: string,
+  userId: string,
+): Promise<PostDetailSource> {
+  if (!isValidObjectId(postId)) {
+    throw new InvalidPostIdError()
+  }
+
+  const post = await Post.findById(postId)
+    .populate<{ author: PopulatedAuthor }>('author', 'name avatarUrl')
+    .populate<{ tags: PopulatedTag[] }>('tags', 'name slug')
+    .lean()
+
+  if (!post) {
+    throw new PostNotFoundError()
+  }
+
+  if (String(post.author._id) !== userId) {
+    throw new PostForbiddenError()
+  }
+
+  return post
+}

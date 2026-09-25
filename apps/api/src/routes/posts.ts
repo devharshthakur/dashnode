@@ -16,6 +16,7 @@ import {
 import {
   createPost,
   deletePost,
+  getOwnedPostById,
   getPublishedPostBySlug,
   listPublishedPosts,
   listUserPosts,
@@ -69,6 +70,20 @@ postsRouter.get('/mine', requireAuth, async (req, res) => {
 
   res.status(200).json(body)
 })
+
+postsRouter.get(
+  '/mine/:id',
+  requireAuth,
+  async (req: Request<{ id: string }>, res, next) => {
+    try {
+      const post = await getOwnedPostById(req.params.id, req.user!.id)
+      const body: PostDetailResponse = { post: toPostDetailDto(post) }
+      res.status(200).json(body)
+    } catch (error) {
+      handlePostError(res, next, error)
+    }
+  },
+)
 
 postsRouter.get('/:slug', async (req: Request<{ slug: string }>, res, next) => {
   try {
