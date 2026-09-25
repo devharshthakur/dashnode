@@ -5,6 +5,13 @@
     "**/bower_components": true,
     "**/*.code-search": true,
     "**/*.agents": true,
-    "**/*.git": true
+    "**/*.git": true,
+    "**/routeTree.gen.ts": true
+  },
+  "files.readonlyInclude": {
+    "**/routeTree.gen.ts": true
+  },
+  "files.watcherExclude": {
+    "**/routeTree.gen.ts": true
   }
 }
