@@ -64,7 +64,9 @@ postsRouter.get('/', async (req, res) => {
   res.status(200).json(body)
 })
 
-postsRouter.get('/mine', requireAuth, async (req, res) => {
+// Two segments keep the dashboard out of the public `/:slug` space, so no
+// published post slug can shadow it. Must stay above `/mine/:id`.
+postsRouter.get('/mine/list', requireAuth, async (req, res) => {
   const posts = await listUserPosts(req.user!.id)
   const body: PostListResponse = { posts: posts.map(toPostCardDto) }
 
