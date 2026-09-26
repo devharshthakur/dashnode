@@ -98,12 +98,15 @@ async function loadOwnedPost(
  * Creates a post owned by `authorId`. The slug is derived from the title, the
  * author comes from the session (never the request body), and tags are linked
  * or created in the same transaction so a failed write leaves nothing behind.
+ * A post created as published is stamped with its publication date; a draft
+ * starts with none.
  */
 export async function createPost(
   authorId: string,
   input: CreatePostInput,
 ): Promise<HydratedDocument<PostDocument>> {
   const slug = await generateUniqueSlug(input.title, Post)
+  const status = input.status ?? 'draft'
 
   return withTransaction(async (session) => {
     const tags = await resolveTagIds(input.tags, session)
@@ -116,7 +119,8 @@ export async function createPost(
           content: input.content,
           excerpt: input.excerpt ?? deriveExcerpt(input.content),
           coverImage: input.coverImage ?? '',
-          status: input.status ?? 'draft',
+          status,
+          publishedAt: status === 'published' ? new Date() : null,
           author: authorId,
           tags,
         },
@@ -131,7 +135,10 @@ export async function createPost(
 /**
  * Updates a post after the ownership check. The slug stays stable across edits
  * so published URLs do not break. A new body refreshes the derived excerpt
- * unless the request supplied one explicitly.
+ * unless the request supplied one explicitly. A draft→published transition
+ * stamps a fresh publication date; editing an already published post keeps its
+ * original date. Republishing an unpublished post is treated as a new
+ * publication and therefore gets a new date.
  */
 export async function updatePost(
   postId: string,
@@ -161,8 +168,11 @@ export async function updatePost(
       post.coverImage = input.coverImage
     }
 
-    if (input.status !== undefined) {
+    if (input.status !== undefined && input.status !== post.status) {
       post.status = input.status
+      // Public feeds order by this date, so every fresh publication stamps it
+      // and an unpublish clears it. Edits that keep the status leave it alone.
+      post.publishedAt = input.status === 'published' ? new Date() : null
     }
 
     if (input.tags !== undefined) {
@@ -193,9 +203,10 @@ export interface ListPublishedPostsQuery {
 }
 
 /**
- * Loads the public feed: published posts only, newest first. The status filter
- * is applied before any search or tag clause so drafts can never leak into a
- * public response. Author and tags are populated for feed cards.
+ * Loads the public feed: published posts only, most recently published first.
+ * The status filter is applied before any search or tag clause so drafts can
+ * never leak into a public response. Author and tags are populated for feed
+ * cards.
  */
 export async function listPublishedPosts(
   query: ListPublishedPostsQuery,
@@ -217,7 +228,7 @@ export async function listPublishedPosts(
   }
 
   const posts = await Post.find(filter)
-    .sort({ createdAt: -1 })
+    .sort({ publishedAt: -1 })
     .populate<{ author: PopulatedAuthor }>('author', 'name avatarUrl')
     .populate<{ tags: PopulatedTag[] }>('tags', 'name slug')
     .lean()

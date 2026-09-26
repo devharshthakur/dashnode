@@ -11,6 +11,7 @@ export interface PostDocument {
   excerpt: string
   coverImage: string
   status: PostStatus
+  publishedAt: Date | null
   author: Types.ObjectId
   tags: Types.ObjectId[]
   createdAt: Date
@@ -51,6 +52,11 @@ const postSchema = new Schema<PostDocument>(
       default: 'draft',
       required: true,
     },
+    // Stamped when the post enters `published`; null while it is a draft.
+    publishedAt: {
+      type: Date,
+      default: null,
+    },
     author: {
       type: Schema.Types.ObjectId,
       ref: 'User',
@@ -66,8 +72,8 @@ const postSchema = new Schema<PostDocument>(
   { timestamps: true },
 )
 
-// Public feed: newest-first published posts
-postSchema.index({ status: 1, createdAt: -1 })
+// Public feed: most recently published posts first
+postSchema.index({ status: 1, publishedAt: -1 })
 // Dashboard: current user's posts (drafts + published)
 postSchema.index({ author: 1, status: 1 })
 // Title keyword search over published posts
