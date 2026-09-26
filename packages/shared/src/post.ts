@@ -17,6 +17,8 @@ export interface PostDto {
   status: PostStatus
   author: string
   tags: string[]
+  /** ISO publication date, or null while the post is a draft. */
+  publishedAt: string | null
   createdAt: string
   updatedAt: string
 }
@@ -31,6 +33,8 @@ export interface PostCardDto {
   status: PostStatus
   author: AuthorDto
   tags: TagDto[]
+  /** ISO publication date, or null while the post is a draft. */
+  publishedAt: string | null
   createdAt: string
   updatedAt: string
 }

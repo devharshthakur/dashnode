@@ -15,7 +15,10 @@ export interface PublicUserProfile {
   posts: PostCardSource[]
 }
 
-/** Loads a public user profile and only that author's published posts. */
+/**
+ * Loads a public user profile and only that author's published posts, most
+ * recently published first.
+ */
 export async function getPublicUserProfile(
   userId: string,
 ): Promise<PublicUserProfile> {
@@ -30,7 +33,7 @@ export async function getPublicUserProfile(
   }
 
   const posts = await Post.find({ author: userId, status: 'published' })
-    .sort({ createdAt: -1 })
+    .sort({ publishedAt: -1 })
     .populate<{ author: PopulatedAuthor }>('author', 'name avatarUrl')
     .populate<{ tags: PopulatedTag[] }>('tags', 'name slug')
     .lean()

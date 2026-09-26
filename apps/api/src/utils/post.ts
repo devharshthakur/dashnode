@@ -21,6 +21,7 @@ export function toPostDto(post: HydratedDocument<PostDocument>): PostDto {
     excerpt: post.excerpt,
     coverImage: post.coverImage,
     status: post.status,
+    publishedAt: post.publishedAt ? post.publishedAt.toISOString() : null,
     author: String(post.author),
     tags: post.tags.map((tag) => String(tag)),
     createdAt: (post.get('createdAt') as Date).toISOString(),
@@ -53,6 +54,7 @@ export interface PostCardSource {
   excerpt: string
   coverImage: string
   status: PostStatus
+  publishedAt: Date | null
   author: PopulatedAuthor
   tags: PopulatedTag[]
   createdAt: Date
@@ -86,6 +88,7 @@ export function toPostCardDto(post: PostCardSource): PostCardDto {
       name: tag.name,
       slug: tag.slug,
     })),
+    publishedAt: post.publishedAt ? post.publishedAt.toISOString() : null,
     createdAt: post.createdAt.toISOString(),
     updatedAt: post.updatedAt.toISOString(),
   }
