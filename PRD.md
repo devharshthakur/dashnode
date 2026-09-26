@@ -335,7 +335,11 @@ The public feed must be accessible to both logged-in users and visitors.
 
 #### Feed Ordering
 
-Published posts must be shown newest first.
+Published posts must be shown newest first, ordered by the time each post was
+published rather than the time its draft was created. A draft created earlier
+but published later therefore appears above older posts. Editing a published
+post does not change its publication date; unpublishing and publishing it again
+counts as a new publication.
 
 #### Feed Card Content
 
@@ -675,6 +679,10 @@ const postSchema = new mongoose.Schema(
       enum: ['draft', 'published'],
       default: 'draft',
     },
+    publishedAt: {
+      type: Date,
+      default: null,
+    },
     author: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
@@ -693,18 +701,19 @@ const postSchema = new mongoose.Schema(
 
 ### Post fields
 
-| Field        | Type             |  Required | Notes                                       |
-| ------------ | ---------------- | --------: | ------------------------------------------- |
-| `title`      | String           |       Yes | Trimmed                                     |
-| `slug`       | String           |       Yes | Unique, used in public post URLs            |
-| `content`    | String           |       Yes | Raw Markdown                                |
-| `excerpt`    | String           |        No | Maximum 250 characters                      |
-| `coverImage` | String           |        No | URL; defaults to empty string               |
-| `status`     | String           |        No | `draft` or `published`; defaults to `draft` |
-| `author`     | ObjectId → User  |       Yes | Identifies post owner                       |
-| `tags`       | ObjectId[] → Tag |        No | Supports multiple tags                      |
-| `createdAt`  | Date             | Automatic | Added by timestamps                         |
-| `updatedAt`  | Date             | Automatic | Added by timestamps                         |
+| Field         | Type             |  Required | Notes                                       |
+| ------------- | ---------------- | --------: | ------------------------------------------- |
+| `title`       | String           |       Yes | Trimmed                                     |
+| `slug`        | String           |       Yes | Unique, used in public post URLs            |
+| `content`     | String           |       Yes | Raw Markdown                                |
+| `excerpt`     | String           |        No | Maximum 250 characters                      |
+| `coverImage`  | String           |        No | URL; defaults to empty string               |
+| `status`      | String           |        No | `draft` or `published`; defaults to `draft` |
+| `publishedAt` | Date             |        No | Set when published, `null` for drafts       |
+| `author`      | ObjectId → User  |       Yes | Identifies post owner                       |
+| `tags`        | ObjectId[] → Tag |        No | Supports multiple tags                      |
+| `createdAt`   | Date             | Automatic | Added by timestamps                         |
+| `updatedAt`   | Date             | Automatic | Added by timestamps                         |
 
 ## 4.3 Tag Model
 
@@ -819,6 +828,8 @@ Base path:
 ### Required post endpoint behavior
 
 - `GET /api/posts` must exclude drafts.
+- Public feeds (`GET /api/posts`, `GET /api/tags/:slug/posts`, and the posts on `GET /api/users/:id`) order published posts by `publishedAt`, most recent first.
+- `publishedAt` is set when a post is created as published or transitions from draft to published, cleared when a published post is unpublished, and returned by the post endpoints (`null` for drafts). Post payloads include it alongside `createdAt`/`updatedAt`.
 - Public post lookup by slug must return published posts only.
 - Update and delete operations must verify that the current user owns the post.
 - `GET /api/posts/mine/list` returns both draft and published posts belonging to the authenticated user. Its two-segment path keeps it from shadowing the single-segment public `GET /api/posts/:slug` lookup.

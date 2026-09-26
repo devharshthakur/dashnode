@@ -36,4 +36,6 @@ Items follow the [REST API requirements](../../PRD.md#5-rest-api-specification).
 
 Unlike the PRD's bearer-token flow, this API sends signed JWTs in HttpOnly cookies. Protected routes verify the session; public post results exclude drafts, update and delete enforce ownership on the server, and user responses omit password hashes. Routes, validation schemas, services, and models are organized under `src/`.
 
+Public feeds order posts by `publishedAt`, which is stamped when a post is first published (or republished after being unpublished) and left unchanged by later edits. Run `pnpm --filter api backfill:published-at` once against a database that already held published posts, so their `publishedAt` is set from `createdAt`.
+
 To run the API locally, configure its environment and start MongoDB as described in the [development setup](../../SETUP.md), then run `pnpm --filter api dev` from the repository root.

@@ -39,11 +39,12 @@ pnpm --filter api db:down
 
 Other useful commands:
 
-| Command                     | What it does                            |
-| --------------------------- | --------------------------------------- |
-| `pnpm build`                | Builds the workspace applications.      |
-| `pnpm validate`             | Runs lint, formatting, and type checks. |
-| `pnpm --filter api db:logs` | Follows the local MongoDB logs.         |
+| Command                                   | What it does                                                    |
+| ----------------------------------------- | --------------------------------------------------------------- |
+| `pnpm build`                              | Builds the workspace applications.                              |
+| `pnpm validate`                           | Runs lint, formatting, and type checks.                         |
+| `pnpm --filter api db:logs`               | Follows the local MongoDB logs.                                 |
+| `pnpm --filter api backfill:published-at` | Fills `publishedAt` for published posts that predate the field. |
 
 ## Deployment plan
 
