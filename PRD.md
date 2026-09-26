@@ -807,21 +807,21 @@ Base path:
 /api/posts
 ```
 
-| Method   | Route              | Access                 | Request Body / Query                           | Purpose                                                |
-| -------- | ------------------ | ---------------------- | ---------------------------------------------- | ------------------------------------------------------ |
-| `GET`    | `/api/posts`       | Public                 | Query: `search`, `tag`                         | List published posts for the public feed               |
-| `GET`    | `/api/posts/:slug` | Public                 | —                                              | Return one published post by slug                      |
-| `POST`   | `/api/posts`       | Protected              | `{ title, content, tags, coverImage, status }` | Create a draft or published post                       |
-| `PUT`    | `/api/posts/:id`   | Protected — owner only | `{ title, content, tags, coverImage, status }` | Update an existing post                                |
-| `DELETE` | `/api/posts/:id`   | Protected — owner only | —                                              | Delete an existing post                                |
-| `GET`    | `/api/posts/mine`  | Protected              | —                                              | List all posts owned by current user, including drafts |
+| Method   | Route                  | Access                 | Request Body / Query                           | Purpose                                                |
+| -------- | ---------------------- | ---------------------- | ---------------------------------------------- | ------------------------------------------------------ |
+| `GET`    | `/api/posts`           | Public                 | Query: `search`, `tag`                         | List published posts for the public feed               |
+| `GET`    | `/api/posts/:slug`     | Public                 | —                                              | Return one published post by slug                      |
+| `POST`   | `/api/posts`           | Protected              | `{ title, content, tags, coverImage, status }` | Create a draft or published post                       |
+| `PUT`    | `/api/posts/:id`       | Protected — owner only | `{ title, content, tags, coverImage, status }` | Update an existing post                                |
+| `DELETE` | `/api/posts/:id`       | Protected — owner only | —                                              | Delete an existing post                                |
+| `GET`    | `/api/posts/mine/list` | Protected              | —                                              | List all posts owned by current user, including drafts |
 
 ### Required post endpoint behavior
 
 - `GET /api/posts` must exclude drafts.
 - Public post lookup by slug must return published posts only.
 - Update and delete operations must verify that the current user owns the post.
-- `GET /api/posts/mine` returns both draft and published posts belonging to the authenticated user.
+- `GET /api/posts/mine/list` returns both draft and published posts belonging to the authenticated user. Its two-segment path keeps it from shadowing the single-segment public `GET /api/posts/:slug` lookup.
 
 ## 5.3 Tag Endpoints
 
