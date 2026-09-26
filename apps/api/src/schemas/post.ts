@@ -1,6 +1,8 @@
 import { z } from 'zod'
 
+import { DEFAULT_POST_PAGE_SIZE, MAX_POST_PAGE_SIZE } from '#config/constants'
 import { POST_STATUSES } from '#models/post'
+import { decodePostCursor } from '#utils/cursor'
 import { slugify } from '#utils/slug'
 
 /** True when `value` still yields a usable slug after slugification. */
@@ -32,7 +34,40 @@ export const createPostBodySchema = postBodySchema.extend({
 
 export const updatePostBodySchema = postBodySchema.partial()
 
-export const listPostsQuerySchema = z.object({
+/**
+ * Cursor for the next page of a post list. A malformed value is rejected here
+ * instead of silently returning the first page, so clients notice a broken
+ * token immediately.
+ */
+const postCursorSchema = z
+  .string()
+  .max(200)
+  .transform((value, ctx) => {
+    const cursor = decodePostCursor(value)
+
+    if (!cursor) {
+      ctx.addIssue({ code: 'custom', message: 'Invalid cursor' })
+      return z.NEVER
+    }
+
+    return cursor
+  })
+
+/**
+ * Shared by every endpoint that lists posts: a bounded page size plus the
+ * keyset position that reaches the next page.
+ */
+export const postPageQuerySchema = z.object({
+  limit: z.coerce
+    .number()
+    .int()
+    .min(1)
+    .max(MAX_POST_PAGE_SIZE)
+    .default(DEFAULT_POST_PAGE_SIZE),
+  cursor: postCursorSchema.optional(),
+})
+
+export const listPostsQuerySchema = postPageQuerySchema.extend({
   search: z.string().trim().min(1).max(200).optional(),
   tag: z.string().trim().min(1).max(50).optional(),
 })
