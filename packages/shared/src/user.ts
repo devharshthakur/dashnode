@@ -11,4 +11,6 @@ export interface UserProfileDto {
 export interface UserProfileResponse {
   user: UserProfileDto
   posts: PostCardDto[]
+  /** Opaque cursor for the next page of posts; null on the last page. */
+  nextCursor: string | null
 }

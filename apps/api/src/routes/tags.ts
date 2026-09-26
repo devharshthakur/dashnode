@@ -2,6 +2,8 @@ import { Router } from 'express'
 import type { Request } from 'express'
 import type { PostListResponse, TagListResponse } from '@packages/shared'
 
+import { sendValidationError } from '#errors/route'
+import { postPageQuerySchema } from '#schemas/post'
 import { listPublishedPosts } from '#services/post'
 import { listTags } from '#services/tag'
 import { toPostCardDto } from '#utils/post'
@@ -23,8 +25,18 @@ tagsRouter.get('/', async (_req, res) => {
 })
 
 tagsRouter.get('/:slug/posts', async (req: Request<{ slug: string }>, res) => {
-  const posts = await listPublishedPosts({ tag: req.params.slug })
-  const body: PostListResponse = { posts: posts.map(toPostCardDto) }
+  const parsed = postPageQuerySchema.safeParse(req.query)
+
+  if (!parsed.success) {
+    sendValidationError(res, parsed.error)
+    return
+  }
+
+  const result = await listPublishedPosts({ tag: req.params.slug }, parsed.data)
+  const body: PostListResponse = {
+    posts: result.posts.map(toPostCardDto),
+    nextCursor: result.nextCursor,
+  }
 
   res.status(200).json(body)
 })

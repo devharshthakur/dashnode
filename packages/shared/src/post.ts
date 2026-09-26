@@ -60,9 +60,13 @@ export interface PostResponse {
   post: PostDto
 }
 
-/** Post list response containing populated post cards. */
+/**
+ * One page of post cards. `nextCursor` is opaque: send it back as the `cursor`
+ * query parameter to load the following page, or stop when it is null.
+ */
 export interface PostListResponse {
   posts: PostCardDto[]
+  nextCursor: string | null
 }
 
 /** Post detail response with the full raw Markdown body. */
