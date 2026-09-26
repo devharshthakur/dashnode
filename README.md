@@ -14,13 +14,13 @@ The web and API live in one monorepo managed by [pnpm](https://pnpm.io/). Shared
 
 ## Documentation
 
-- [Setup](./SETUP.md) explains local development and the deployment plan.
-- [Architecture](./ARCHITECTURE.md) describes the project structure, technology choices, API, and current gaps.
-- [Web app](./apps/web/README.md) describes the frontend and how to run it.
-- [API](./apps/api/README.md) describes the service and its available endpoints.
-- [Shared contracts](./packages/shared/README.md) describes the types used by the API and web app.
-- [Product requirements](./PRD.md) contains the MVP scope and API contract.
-- [Original requirements](./PRD.pdf) is the supplied source document.
+ 1. [Setup](./SETUP.md) explains local development and the deployment plan.
+ 2. [Architecture](./ARCHITECTURE.md) describes the project structure, technology choices, API, and current gaps.
+ 3. [Web app](./apps/web/README.md) describes the frontend and how to run it.
+ 4. [API](./apps/api/README.md) describes the service and its available endpoints.
+ 5. [Shared](./packages/shared/README.md) describes the types used by the API and web app.
+ 6. [Product requirements Document](./PRD.md) contains the MVP scope and API contract.
+ 7. [Original requirements](./PRD.pdf) is the supplied source document.
 
 ## License
 
