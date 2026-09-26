@@ -362,6 +362,13 @@ Search matches against post titles.
 
 Clicking a feed card must open the complete article on its own post-detail page.
 
+#### Feed Pagination
+
+The API serves the feed in bounded pages and returns a cursor for reaching older
+posts (see [Post list pagination](#post-list-pagination)). Pagination controls in
+the client remain optional; the server never loads an unbounded number of posts
+for one request.
+
 #### Draft Visibility Rule
 
 Draft posts must never appear in:
@@ -816,14 +823,14 @@ Base path:
 /api/posts
 ```
 
-| Method   | Route                  | Access                 | Request Body / Query                           | Purpose                                                |
-| -------- | ---------------------- | ---------------------- | ---------------------------------------------- | ------------------------------------------------------ |
-| `GET`    | `/api/posts`           | Public                 | Query: `search`, `tag`                         | List published posts for the public feed               |
-| `GET`    | `/api/posts/:slug`     | Public                 | —                                              | Return one published post by slug                      |
-| `POST`   | `/api/posts`           | Protected              | `{ title, content, tags, coverImage, status }` | Create a draft or published post                       |
-| `PUT`    | `/api/posts/:id`       | Protected — owner only | `{ title, content, tags, coverImage, status }` | Update an existing post                                |
-| `DELETE` | `/api/posts/:id`       | Protected — owner only | —                                              | Delete an existing post                                |
-| `GET`    | `/api/posts/mine/list` | Protected              | —                                              | List all posts owned by current user, including drafts |
+| Method   | Route                  | Access                 | Request Body / Query                           | Purpose                                         |
+| -------- | ---------------------- | ---------------------- | ---------------------------------------------- | ----------------------------------------------- |
+| `GET`    | `/api/posts`           | Public                 | Query: `search`, `tag`, `limit`, `cursor`      | List published posts for the public feed        |
+| `GET`    | `/api/posts/:slug`     | Public                 | —                                              | Return one published post by slug               |
+| `POST`   | `/api/posts`           | Protected              | `{ title, content, tags, coverImage, status }` | Create a draft or published post                |
+| `PUT`    | `/api/posts/:id`       | Protected — owner only | `{ title, content, tags, coverImage, status }` | Update an existing post                         |
+| `DELETE` | `/api/posts/:id`       | Protected — owner only | —                                              | Delete an existing post                         |
+| `GET`    | `/api/posts/mine/list` | Protected              | Query: `limit`, `cursor`                       | List the current user's posts, including drafts |
 
 ### Required post endpoint behavior
 
@@ -833,6 +840,17 @@ Base path:
 - Public post lookup by slug must return published posts only.
 - Update and delete operations must verify that the current user owns the post.
 - `GET /api/posts/mine/list` returns both draft and published posts belonging to the authenticated user. Its two-segment path keeps it from shadowing the single-segment public `GET /api/posts/:slug` lookup.
+
+### Post list pagination
+
+Every endpoint that returns a list of posts reads one bounded page instead of
+every match. A page holds 10 posts by default and accepts a `limit` query
+parameter of 1–50. The response includes an opaque `nextCursor`; sending it back
+as the `cursor` query parameter returns the next page, and `null` marks the last
+page. Pages are keyset-paginated over the ordering key plus `_id`, so paging
+stays cheap at any depth and ordering is deterministic when timestamps tie.
+Pagination controls in the client remain optional; the limit here exists so one
+request can never read an unbounded number of posts or their Markdown bodies.
 
 ## 5.3 Tag Endpoints
 
