@@ -1,4 +1,4 @@
-import type { Model } from 'mongoose'
+import type { ClientSession, Model } from 'mongoose'
 import libSlugify from 'slugify'
 
 /**
@@ -19,18 +19,23 @@ export function slugify(input: string): string {
  * The base slug is tried first, then a numeric suffix is appended until the
  * slug is free (`title`, `title-1`, `title-2`, ...). Pass the `Post` or `Tag`
  * model at the call site so both services share one uniqueness implementation
- * instead of duplicating lookup logic. Candidates are probed in a fixed order,
- * making the result deterministic for a given set of existing slugs.
+ * instead of duplicating lookup logic. Pass `session` when generating inside a
+ * transaction so the probe sees slugs written earlier in that same transaction.
+ * Candidates are probed in a fixed order, making the result deterministic for a
+ * given set of existing slugs.
  */
 export async function generateUniqueSlug<T extends { slug: string }>(
   input: string,
   model: Model<T>,
+  session?: ClientSession,
 ): Promise<string> {
   const base = slugify(input)
   let candidate = base
   let suffix = 1
 
-  while ((await model.exists({ slug: candidate })) !== null) {
+  while (
+    (await model.exists({ slug: candidate }).session(session ?? null)) !== null
+  ) {
     candidate = `${base}-${suffix}`
     suffix += 1
   }
