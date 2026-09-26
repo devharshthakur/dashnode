@@ -18,7 +18,6 @@
     "db:up": "docker compose up -d",
     "db:down": "docker compose down",
     "db:logs": "docker compose logs -f mongodb",
-    "backfill:published-at": "tsx src/scripts/backfill-published-at.ts",
     "dev": "nodemon",
     "build": "tsdown",
     "start": "node build/index.mjs",
