@@ -5,6 +5,7 @@ import type { UserProfileResponse } from '@packages/shared'
 import { logger } from '#config/logger'
 import { InvalidUserIdError, UserNotFoundError } from '#errors/user'
 import { requireAuth } from '#middlewares/auth'
+import { postPageQuerySchema } from '#schemas/post'
 import { updateUserProfileBodySchema } from '#schemas/user'
 import { updateUserProfile } from '#services/auth'
 import { getPublicUserProfile } from '#services/user'
@@ -34,11 +35,19 @@ usersRouter.put('/me', requireAuth, async (req, res) => {
 usersRouter.get(
   '/:id',
   async (req: Request<{ id: string }>, res: Response, next: NextFunction) => {
+    const parsed = postPageQuerySchema.safeParse(req.query)
+
+    if (!parsed.success) {
+      sendValidationError(res, parsed.error)
+      return
+    }
+
     try {
-      const profile = await getPublicUserProfile(req.params.id)
+      const profile = await getPublicUserProfile(req.params.id, parsed.data)
       const body: UserProfileResponse = {
         user: profile.user,
         posts: profile.posts.map(toPostCardDto),
+        nextCursor: profile.nextCursor,
       }
 
       logger.info(

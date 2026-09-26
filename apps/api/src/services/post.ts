@@ -204,6 +204,8 @@ export interface ListPublishedPostsQuery {
   search?: string
   /** Tag slug; an unknown slug yields an empty feed, never an error. */
   tag?: string
+  /** Author id; set when a public profile asks for that author's posts. */
+  author?: string
 }
 
 /**
@@ -244,8 +246,8 @@ async function findPostCardPage(
 
 /**
  * Loads one page of the public feed: published posts only, most recently
- * published first. The status filter is applied before any search or tag
- * clause so drafts can never leak into a public response.
+ * published first. The status filter is applied before any search, tag, or
+ * author clause so drafts can never leak into a public response.
  */
 export async function listPublishedPosts(
   query: ListPublishedPostsQuery,
@@ -265,6 +267,10 @@ export async function listPublishedPosts(
     }
 
     filter.tags = tag._id
+  }
+
+  if (query.author !== undefined) {
+    filter.author = query.author
   }
 
   return findPostCardPage(filter, 'publishedAt', page)

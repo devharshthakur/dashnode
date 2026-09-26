@@ -2,25 +2,23 @@ import { isValidObjectId } from 'mongoose'
 import type { UserProfileDto } from '@packages/shared'
 
 import { InvalidUserIdError, UserNotFoundError } from '#errors/user'
-import { Post } from '#models/post'
 import { User } from '#models/user'
-import {
-  type PopulatedAuthor,
-  type PopulatedTag,
-  type PostCardSource,
-} from '#utils/post'
+import { listPublishedPosts } from '#services/post'
+import type { PostCardSource, PostPageQuery } from '#utils/post'
 
 export interface PublicUserProfile {
   user: UserProfileDto
   posts: PostCardSource[]
+  nextCursor: string | null
 }
 
 /**
- * Loads a public user profile and only that author's published posts, most
- * recently published first.
+ * Loads a public user profile and one page of that author's published posts,
+ * most recently published first.
  */
 export async function getPublicUserProfile(
   userId: string,
+  page: PostPageQuery,
 ): Promise<PublicUserProfile> {
   if (!isValidObjectId(userId)) {
     throw new InvalidUserIdError()
@@ -32,11 +30,7 @@ export async function getPublicUserProfile(
     throw new UserNotFoundError()
   }
 
-  const posts = await Post.find({ author: userId, status: 'published' })
-    .sort({ publishedAt: -1 })
-    .populate<{ author: PopulatedAuthor }>('author', 'name avatarUrl')
-    .populate<{ tags: PopulatedTag[] }>('tags', 'name slug')
-    .lean()
+  const posts = await listPublishedPosts({ author: userId }, page)
 
   return {
     user: {
@@ -45,6 +39,7 @@ export async function getPublicUserProfile(
       bio: user.bio,
       avatarUrl: user.avatarUrl,
     },
-    posts,
+    posts: posts.posts,
+    nextCursor: posts.nextCursor,
   }
 }
