@@ -20,7 +20,7 @@ import {
   type PostCardSource,
   type PostDetailSource,
 } from '#utils/post'
-import { generateUniqueSlug, slugify } from '#utils/slug'
+import { generateUniqueSlug } from '#utils/slug'
 import { withTransaction } from '#utils/transaction'
 
 const EXCERPT_MAX_LENGTH = 250
@@ -35,23 +35,31 @@ function deriveExcerpt(content: string): string {
 }
 
 /**
- * Maps tag names or slugs to Tag ids, reusing a document whose slug already
- * matches and creating the tag otherwise. Callers pass the surrounding
- * transaction session so post and tag writes commit together.
+ * Maps tag names to Tag ids, reusing a tag whose display name already matches
+ * and creating one otherwise. A tag's name is stored apart from its URL slug,
+ * so names such as `Node.js` stay readable and distinct names that slugify
+ * alike (`C++`, `C#`) get a stable unique suffix instead of merging. Reuse is
+ * keyed on the name so re-selecting a tag stays stable even after its slug was
+ * suffixed. Callers pass the surrounding transaction session so post and tag
+ * writes commit together.
  */
 async function resolveTagIds(
   tags: string[],
   session: ClientSession,
 ): Promise<Types.ObjectId[]> {
-  const slugs = [...new Set(tags.map((tag) => slugify(tag)))]
+  const names = [...new Set(tags.map((tag) => tag.trim().toLowerCase()))]
   const tagIds: Types.ObjectId[] = []
 
-  for (const slug of slugs) {
-    const tag = await Tag.findOneAndUpdate(
-      { slug },
-      { $setOnInsert: { name: slug, slug } },
-      { upsert: true, returnDocument: 'after', session },
-    ).orFail()
+  for (const name of names) {
+    const existing = await Tag.findOne({ name }).session(session)
+
+    if (existing) {
+      tagIds.push(existing._id)
+      continue
+    }
+
+    const slug = await generateUniqueSlug(name, Tag, session)
+    const [tag] = await Tag.create([{ name, slug }], { session })
 
     tagIds.push(tag._id)
   }
