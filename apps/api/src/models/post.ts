@@ -72,10 +72,14 @@ const postSchema = new Schema<PostDocument>(
   { timestamps: true },
 )
 
-// Public feed: most recently published posts first
-postSchema.index({ status: 1, publishedAt: -1 })
-// Dashboard: current user's posts (drafts + published)
-postSchema.index({ author: 1, status: 1 })
+// Public feed and tag feeds: most recently published first. `_id` settles
+// keyset pagination ties and lets one index satisfy the full sort.
+postSchema.index({ status: 1, publishedAt: -1, _id: -1 })
+postSchema.index({ tags: 1, status: 1, publishedAt: -1, _id: -1 })
+// Public profile: one author's published posts in feed order
+postSchema.index({ author: 1, status: 1, publishedAt: -1, _id: -1 })
+// Dashboard: one author's posts (drafts + published), newest first
+postSchema.index({ author: 1, createdAt: -1, _id: -1 })
 // Title keyword search over published posts
 postSchema.index({ title: 'text' })
 
