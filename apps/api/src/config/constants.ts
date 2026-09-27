@@ -6,3 +6,9 @@ export const DEFAULT_POST_PAGE_SIZE = 10
 
 /** Largest page a client may request from a post list. */
 export const MAX_POST_PAGE_SIZE = 50
+
+/**
+ * Password size limit in UTF-8 bytes. bcrypt only folds the first 72 bytes of a
+ * password into its hash, so a longer one would be silently shortened.
+ */
+export const PASSWORD_MAX_BYTES = 72
