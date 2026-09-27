@@ -1,13 +1,30 @@
 import { existsSync } from 'node:fs'
+import { resolve } from 'node:path'
 
 import { z } from 'zod'
 
-// `loadEnvFile` leaves variables that are already set alone, so the values
-// `vitest.config.ts` installs survive a local `.env`. It does not, however, skip
-// the keys the test run leaves unset, and those would make a result depend on
-// which machine ran it. Tests take their environment from that config alone.
-if (process.env.NODE_ENV !== 'test' && existsSync('.env')) {
-  process.loadEnvFile()
+// The runner chooses the environment, never the file: Vitest sets
+// `NODE_ENV=test`, and `preview` sets `NODE_ENV=production`. `NODE_ENV` is
+// therefore never read from a file, because deciding which file to load is what
+// depends on it.
+const envFileByName: Record<string, string | undefined> = {
+  test: '.env.test',
+  development: '.env',
+  // Railway and Vercel inject the real production values, and `SETUP.md` keeps
+  // them out of the repository.
+  production: undefined,
+}
+
+const envFile = envFileByName[process.env.NODE_ENV ?? 'development']
+
+// Resolved from the module rather than `process.cwd()`, so a run started from
+// the repository root reads the same file as one started from `apps/api`.
+const envPath = envFile ? resolve(import.meta.dirname, '..', envFile) : null
+
+if (envPath && existsSync(envPath)) {
+  // `loadEnvFile` only fills in variables that are still unset, so a variable
+  // set by the runner or the shell always wins over the file.
+  process.loadEnvFile(envPath)
 }
 
 const envSchema = z.object({
