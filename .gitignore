@@ -22,6 +22,9 @@ coverage
 .env
 .env.*
 !.env.example
+# Committed so `pnpm test` works on a fresh clone. Holds a throwaway signing
+# secret, never a real one.
+!.env.test
 
 # OS
 .DS_Store
