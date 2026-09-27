@@ -32,7 +32,7 @@ Items follow the [REST API requirements](../../PRD.md#5-rest-api-specification).
 - [x] `GET /api/tags` — list tags with counts of published posts using each tag.
 - [x] `GET /api/tags/:slug/posts` — list published posts for a tag, one bounded page at a time.
 - [x] `GET /api/users/:id` — return a public profile and one bounded page of its published posts.
-- [x] `PUT /api/users/me` — update the signed-in user's profile.
+- [x] `PUT /api/users/me` — update the signed-in user's profile; every field is optional, so one can be sent on its own.
 
 Unlike the PRD's bearer-token flow, this API sends signed JWTs in HttpOnly cookies. Protected routes verify the session; public post results exclude drafts, update and delete enforce ownership on the server, and user responses omit password hashes. Routes, validation schemas, services, and models are organized under `src/`.
 
@@ -45,6 +45,10 @@ Because a browser attaches the session cookie to any request it is told to send 
 Public feeds order posts by `publishedAt`, which is stamped when a post is first published (or republished after being unpublished) and left unchanged by later edits.
 
 A post's slug is derived from its title and must be unique, and choosing one is a separate step from storing it, so two concurrent `POST /api/posts` requests for the same new title can pick the same slug. The unique index on `slug` is the final protection, and a request it rejects simply takes a different slug and writes again, so a lost race never fails the request and never becomes a `5xx`: both posts are stored, under `title` and `title-1`. Once a request has lost more than one race it stops competing for a readable slug and appends a random token to the title instead (`title-a7f3c19e02`), which no concurrent request can be holding. Only a duplicate on the slug index is handled this way; any other database failure is left to the generic `500`, so a server fault is still reported as one.
+
+Image fields — a post's `coverImage` and a profile's `avatarUrl` — are the API's only references to media it does not host, so both accept an absolute `http` or `https` URL of at most 2048 characters, or an empty string to clear the image. A value that is not a URL at all (`not-a-url`), a relative or protocol-relative path, or another scheme (`javascript:`, `data:`, `file:`) is answered with `400 Validation Error` instead of being stored and handed back to a client as an image source. Existing records are not re-validated: a URL stored before this rule keeps being served, and the client renders it as an image link or nothing.
+
+`PUT /api/users/me` takes any subset of `name`, `bio`, and `avatarUrl`, and sets only the fields the request carried, so changing a bio does not require resending the name and avatar. A body with none of them is answered with `400 Validation Error` rather than a no-op success. Responses come from the same user shape as registration and login, which never includes the password hash.
 
 Request bodies are parsed as JSON and capped at 1 MB. A body the parser refuses is the client's mistake, not a server fault: malformed JSON gets `400 Bad Request`, a body over the limit gets `413 Payload Too Large`, and an unsupported charset or content encoding gets `415 Unsupported Media Type`. Each response carries only that status message. Anything else that throws is answered with a generic `500 Internal Server Error` and no stack trace, so an unexpected failure never leaks internals. `400` on a write is therefore always a request the client should fix and resend, never a transient condition to retry.
 
