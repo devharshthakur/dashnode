@@ -10,7 +10,10 @@ export interface TagWithPostCountSource {
   postCount: number
 }
 
-/** Lists every tag with a count of distinct published posts that use it. */
+/**
+ * Every tag, with the number of distinct published posts that use it. Drafts
+ * are not counted, and a post that links one tag twice still counts once.
+ */
 export async function listTags(): Promise<TagWithPostCountSource[]> {
   const [tags, publishedPostCounts] = await Promise.all([
     Tag.find().sort({ name: 1 }).lean(),

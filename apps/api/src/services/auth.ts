@@ -44,10 +44,8 @@ function isDuplicateKeyError(error: unknown): boolean {
   )
 }
 
-/**
- * Maps a user document to the shape safe to return over HTTP. The password
- * hash is deliberately never selected into this type.
- */
+// The password hash is deliberately never selected into this shape, so no
+// response built from a SafeUser can leak one.
 function toSafeUser(user: HydratedDocument<UserDocument>): SafeUser {
   return {
     id: String(user._id),
@@ -60,12 +58,13 @@ function toSafeUser(user: HydratedDocument<UserDocument>): SafeUser {
   }
 }
 
+// Normalizing the email is what makes the unique index case-insensitive; the
+// index on `User.email` is the source of truth for uniqueness.
+
 /**
- * Creates a user with a bcrypt-hashed password.
- *
- * Email is normalized to lowercase so uniqueness is case-insensitive. The
- * unique index on `User.email` is the source of truth. A losing race against a
- * concurrent registration surfaces as {@link EmailTakenError}.
+ * Creates a user with a bcrypt-hashed password, normalizing the email to
+ * lowercase. Throws {@link EmailTakenError} when the unique index rejects a
+ * registration that lost a race against a concurrent one.
  */
 export async function registerUser(
   input: RegisterUserInput,
@@ -89,13 +88,12 @@ export async function registerUser(
   }
 }
 
+// The hash is `select: false` on the model, so this query opts it back in.
+
 /**
- * Authenticates a user by email and password.
- *
- * The password hash is excluded from normal queries (`select: false`), so it
- * is explicitly selected here. Missing account and wrong password both
- * surface as {@link InvalidCredentialsError} to avoid leaking which emails
- * are registered.
+ * Authenticates a user by email and password. A missing account and a wrong
+ * password both surface as {@link InvalidCredentialsError}, so neither reveals
+ * which emails are registered.
  */
 export async function loginUser(input: LoginUserInput): Promise<SafeUser> {
   const user = await User.findOne({ email: input.email }).select('+password')
@@ -122,7 +120,6 @@ export async function getUserById(userId: string): Promise<SafeUser | null> {
   return user ? toSafeUser(user) : null
 }
 
-/** Updates the editable profile fields and returns the password-free user. */
 export async function updateUserProfile(
   userId: string,
   input: UpdateUserProfileInput,
@@ -139,9 +136,11 @@ export async function updateUserProfile(
   return user ? toSafeUser(user) : null
 }
 
+// The upsert keeps repeated logout with the same token harmless.
+
 /**
- * Blacklists a token id until the token's own expiry. The upsert keeps
- * repeated logout with the same token harmless.
+ * Blacklists a token id until the token's own expiry, at which point the
+ * revocation record is dropped by the TTL index.
  */
 export async function revokeToken(jti: string, expiresAt: Date): Promise<void> {
   await RevokedToken.updateOne(
@@ -151,7 +150,6 @@ export async function revokeToken(jti: string, expiresAt: Date): Promise<void> {
   )
 }
 
-/** True when a token id was blacklisted by logout. */
 export async function isTokenRevoked(jti: string): Promise<boolean> {
   const revoked = await RevokedToken.exists({ jti })
 
