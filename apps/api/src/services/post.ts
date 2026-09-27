@@ -7,6 +7,7 @@ import {
 } from 'mongoose'
 import type { CreatePostInput, UpdatePostInput } from '@packages/shared'
 
+import { logger } from '#config/logger'
 import {
   InvalidPostIdError,
   PostForbiddenError,
@@ -24,10 +25,23 @@ import {
   POST_CARD_FIELDS,
   postCursorFor,
 } from '#utils/post'
-import { generateUniqueSlug } from '#utils/slug'
+import {
+  appendUniqueSuffix,
+  generateUniqueSlug,
+  isDuplicateSlugError,
+  slugify,
+} from '#utils/slug'
 import { withTransaction } from '#utils/transaction'
 
 const EXCERPT_MAX_LENGTH = 250
+
+/**
+ * How many attempts at creating a post read the stored slugs before giving up on
+ * a readable one. A request that only ever reads can keep competing with the
+ * requests that are still writing, so this is small on purpose: past it the
+ * slug carries a token instead, which resolves the race outright.
+ */
+const READABLE_SLUG_ATTEMPTS = 2
 
 /**
  * Builds the feed preview from raw Markdown when the client did not supply an
@@ -104,12 +118,51 @@ async function loadOwnedPost(
  * or created in the same transaction so a failed write leaves nothing behind.
  * A post created as published is stamped with its publication date; a draft
  * starts with none.
+ *
+ * The slug is read before it is written, so two requests for the same new title
+ * can pick the same one. The unique index on `slug` is the final protection, and
+ * a request it rejects simply takes a different slug and writes again, so every
+ * concurrent create ends up stored under a slug of its own. Only that one error
+ * is retried; any other database failure propagates untouched.
  */
 export async function createPost(
   authorId: string,
   input: CreatePostInput,
 ): Promise<HydratedDocument<PostDocument>> {
-  const slug = await generateUniqueSlug(input.title, Post)
+  const base = slugify(input.title)
+
+  for (let attempt = 1; ; attempt += 1) {
+    // The first attempts keep the slug readable, reading what is stored so the
+    // request that lost a race lands on `title-1`. After that the request stops
+    // competing for a readable slug and takes one carrying a token of its own,
+    // which no other request can be holding — so the write cannot be refused
+    // again, and this never runs out of attempts.
+    const slug =
+      attempt <= READABLE_SLUG_ATTEMPTS
+        ? await generateUniqueSlug(input.title, Post)
+        : appendUniqueSuffix(base)
+
+    try {
+      return await writePost(authorId, input, slug)
+    } catch (error) {
+      if (!isDuplicateSlugError(error)) {
+        throw error
+      }
+
+      logger.warn(
+        { attempt },
+        'Post slug already taken by a concurrent request, retrying',
+      )
+    }
+  }
+}
+
+/** Stores the post under `slug`, tagging and writing it in one transaction. */
+async function writePost(
+  authorId: string,
+  input: CreatePostInput,
+  slug: string,
+): Promise<HydratedDocument<PostDocument>> {
   const status = input.status ?? 'draft'
 
   return withTransaction(async (session) => {
