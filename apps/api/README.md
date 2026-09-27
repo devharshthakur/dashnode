@@ -36,6 +36,8 @@ Items follow the [REST API requirements](../../PRD.md#5-rest-api-specification).
 
 Unlike the PRD's bearer-token flow, this API sends signed JWTs in HttpOnly cookies. Protected routes verify the session; public post results exclude drafts, update and delete enforce ownership on the server, and user responses omit password hashes. Routes, validation schemas, services, and models are organized under `src/`.
 
+Protected routes answer `401 Unauthorized` only when the session itself is rejected: no cookie, a token that fails verification, a token revoked by logout, or a user that no longer exists. Session verification also reads from MongoDB, and a database failure there is a server fault, so it surfaces as `500 Internal Server Error` instead. Clients can therefore treat `401` as proof the session ended and retry after a `500`, rather than discarding a cookie that is still valid.
+
 Because a browser attaches the session cookie to any request it is told to send — including a form POST from another site — every route that writes on behalf of the signed-in user (`POST /api/posts`, `PUT /api/posts/:id`, `DELETE /api/posts/:id`, `PUT /api/users/me`, and `POST /api/auth/logout`) first checks that the request's `Origin` header is one of the `CORS_ORIGIN` entries. CORS alone is not enough: it stops a foreign site from reading the response, but not from triggering the write. A request that declares no origin is rejected with `403`, so non-browser clients calling these endpoints must send an `Origin` header themselves. Read-only routes are unaffected.
 
 Public feeds order posts by `publishedAt`, which is stamped when a post is first published (or republished after being unpublished) and left unchanged by later edits.
