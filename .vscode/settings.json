@@ -9,7 +9,8 @@
     "**/routeTree.gen.ts": true
   },
   "files.readonlyInclude": {
-    "**/routeTree.gen.ts": true
+    "**/routeTree.gen.ts": true,
+    "PRD.md": true
   },
   "files.watcherExclude": {
     "**/routeTree.gen.ts": true
