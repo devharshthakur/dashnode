@@ -5,6 +5,7 @@ import type { UserProfileResponse } from '@packages/shared'
 import { logger } from '#config/logger'
 import { InvalidUserIdError, UserNotFoundError } from '#errors/user'
 import { requireAuth } from '#middlewares/auth'
+import { requireTrustedOrigin } from '#middlewares/origin'
 import { postPageQuerySchema } from '#schemas/post'
 import { updateUserProfileBodySchema } from '#schemas/user'
 import { updateUserProfile } from '#services/auth'
@@ -14,7 +15,7 @@ import { toPostCardDto } from '#utils/post'
 
 export const usersRouter = Router()
 
-usersRouter.put('/me', requireAuth, async (req, res) => {
+usersRouter.put('/me', requireTrustedOrigin, requireAuth, async (req, res) => {
   const parsed = updateUserProfileBodySchema.safeParse(req.body)
 
   if (!parsed.success) {

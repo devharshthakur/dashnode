@@ -15,7 +15,7 @@ Items follow the [REST API requirements](../../PRD.md#5-rest-api-specification).
 - [x] `POST /api/auth/register` — create an account and start a session.
 - [x] `POST /api/auth/login` — verify credentials and start a session.
 - [x] `GET /api/auth/me` — return the signed-in user's account data.
-- [x] `POST /api/auth/logout` — revoke the current session and clear its cookie.
+- [x] `POST /api/auth/logout` — revoke the current session and clear its cookie; requires a request from a whitelisted web origin.
 
 ### Posts
 
@@ -35,6 +35,8 @@ Items follow the [REST API requirements](../../PRD.md#5-rest-api-specification).
 - [x] `PUT /api/users/me` — update the signed-in user's profile.
 
 Unlike the PRD's bearer-token flow, this API sends signed JWTs in HttpOnly cookies. Protected routes verify the session; public post results exclude drafts, update and delete enforce ownership on the server, and user responses omit password hashes. Routes, validation schemas, services, and models are organized under `src/`.
+
+Because a browser attaches the session cookie to any request it is told to send — including a form POST from another site — every route that writes on behalf of the signed-in user (`POST /api/posts`, `PUT /api/posts/:id`, `DELETE /api/posts/:id`, `PUT /api/users/me`, and `POST /api/auth/logout`) first checks that the request's `Origin` header is one of the `CORS_ORIGIN` entries. CORS alone is not enough: it stops a foreign site from reading the response, but not from triggering the write. A request that declares no origin is rejected with `403`, so non-browser clients calling these endpoints must send an `Origin` header themselves. Read-only routes are unaffected.
 
 Public feeds order posts by `publishedAt`, which is stamped when a post is first published (or republished after being unpublished) and left unchanged by later edits.
 
