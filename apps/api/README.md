@@ -29,7 +29,7 @@ Items follow the [REST API requirements](../../PRD.md#5-rest-api-specification).
 
 ### Tags and users
 
-- [x] `GET /api/tags` — list tags with counts of published posts using each tag.
+- [x] `GET /api/tags` — list tags on published posts, with counts of the published posts using each tag.
 - [x] `GET /api/tags/:slug/posts` — list published posts for a tag, one bounded page at a time.
 - [x] `GET /api/users/:id` — return a public profile and one bounded page of its published posts.
 - [x] `PUT /api/users/me` — update the signed-in user's profile; every field is optional, so one can be sent on its own.
@@ -41,6 +41,8 @@ Passwords are hashed with bcrypt, which only folds the first 72 **bytes** of a p
 Protected routes answer `401 Unauthorized` only when the session itself is rejected: no cookie, a token that fails verification, a token revoked by logout, or a user that no longer exists. Session verification also reads from MongoDB, and a database failure there is a server fault, so it surfaces as `500 Internal Server Error` instead. Clients can therefore treat `401` as proof the session ended and retry after a `500`, rather than discarding a cookie that is still valid.
 
 Because a browser attaches the session cookie to any request it is told to send — including a form POST from another site — every route that writes on behalf of the signed-in user (`POST /api/posts`, `PUT /api/posts/:id`, `DELETE /api/posts/:id`, `PUT /api/users/me`, and `POST /api/auth/logout`) first checks that the request's `Origin` header is one of the `CORS_ORIGIN` entries. CORS alone is not enough: it stops a foreign site from reading the response, but not from triggering the write. A request that declares no origin is rejected with `403`, so non-browser clients calling these endpoints must send an `Origin` header themselves. Read-only routes are unaffected.
+
+`GET /api/tags` lists only tags that at least one **published** post uses, so a tag coined while writing a draft — such as `secret-project` — is not visible to a visitor until a post carrying it is published. A count of `0` is therefore not part of a response, unlike the PRD's "all available tags": showing a zero-count tag would leak a draft's tag name through the public directory. The tag document is not deleted when it drops out of the directory, so publishing the draft later brings the tag back with the count it now has, and a tag left unused by retagging or deleting its only post can be reused by name instead of being created twice. Because the directory is derived from published posts rather than read from the tag collection, it follows those transitions by itself: a draft's tag appears when the post is published and disappears when the post is unpublished, with no separate cleanup.
 
 Public feeds order posts by `publishedAt`, which is stamped when a post is first published (or republished after being unpublished) and left unchanged by later edits.
 
