@@ -2,7 +2,11 @@ import { existsSync } from 'node:fs'
 
 import { z } from 'zod'
 
-if (existsSync('.env')) {
+// `loadEnvFile` leaves variables that are already set alone, so the values
+// `vitest.config.ts` installs survive a local `.env`. It does not, however, skip
+// the keys the test run leaves unset, and those would make a result depend on
+// which machine ran it. Tests take their environment from that config alone.
+if (process.env.NODE_ENV !== 'test' && existsSync('.env')) {
   process.loadEnvFile()
 }
 
