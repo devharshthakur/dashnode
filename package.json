@@ -47,6 +47,8 @@
     "format": "turbo run format",
     "check": "turbo run check",
     "typecheck": "turbo run typecheck",
+    "test": "turbo run test",
+    "test:watch": "turbo run test:watch",
     "validate": "turbo run lint check typecheck",
     "lint-staged": "lint-staged",
     "prepare": "husky"
