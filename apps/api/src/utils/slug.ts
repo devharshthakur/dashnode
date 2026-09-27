@@ -16,18 +16,24 @@ export function slugify(input: string): string {
   return libSlugify(input, { lower: true, strict: true })
 }
 
-// Tries the base slug first and appends a numeric suffix until one is free
-// (`title`, `title-1`, `title-2`, ...), so the result is deterministic for a
-// given set of existing slugs. Pass the `Post` or `Tag` model at the call site
-// so both services share one lookup, and pass `session` when generating inside a
-// transaction so the probe also sees slugs written earlier in that transaction.
+// Returns a slug no document of `model` stores yet: the folded input first,
+// then a numeric suffix while the candidate is taken (`title`, `title-1`,
+// `title-2`, ...), so the result is deterministic for a given set of existing
+// slugs. Pass the model that will store the slug — the `Post` or `Tag` model,
+// and nothing wider is relied on — and pass `session` when the probe has to see
+// rows written earlier in the same transaction.
 //
-// Probing and inserting are two separate steps, and the insert is not visible to
-// other readers until the transaction that made it commits, so a concurrent
-// write can take the slug in between — and can still be holding it when a later
-// probe runs. A caller that stores the result must therefore still expect a
-// duplicate-key error, which `isDuplicateSlugError` recognises and
-// `appendUniqueSuffix` answers.
+// Two callers share this rule and nothing else. `createPost` picks a post slug
+// from a title; `resolveTagIds` picks one for a new tag, which folds its
+// submitted name because a tag stores the name apart from its slug.
+//
+// Probing and inserting are separate steps, and a concurrent write's insert
+// stays invisible until it commits, so a caller can still be beaten to the slug
+// it was handed. Only post creation absorbs that: it retries on the
+// duplicate-key error `isDuplicateSlugError` recognises and settles on
+// `appendUniqueSuffix`. A tag is created inside its post's transaction after a
+// lookup by name, so it stores the slug it probed; two requests introducing the
+// same new tag at once are stopped by the unique index on `name` instead.
 export async function generateUniqueSlug<T extends { slug: string }>(
   input: string,
   model: Model<T>,
@@ -51,13 +57,12 @@ export async function generateUniqueSlug<T extends { slug: string }>(
 const UNIQUE_SUFFIX_LENGTH = 10
 
 // Used where a request that lost the slug race cannot simply read again:
-// `generateUniqueSlug` finds a slug that is free at the moment it reads, but the
-// winner's row is written inside a transaction and stays invisible until that
-// transaction commits, so re-probing can hand out the same candidate again. A
-// fresh random token cannot be the suffix another request already chose, and
-// practically never matches a slug that is stored, so the retry succeeds on the
-// attempt it is made. Only a request that lost a race is given this form, which
-// keeps the readable `title` / `title-1` slugs that come from a plain probe.
+// re-probing can hand out the same candidate, because the winner's row stays
+// invisible until its transaction commits. A fresh random token cannot be the
+// suffix another request already chose, and practically never matches a slug
+// that is stored, so the retry succeeds on the attempt it is made. Only a
+// request that lost a race is given this form, which keeps the readable
+// `title` / `title-1` slugs that come from a plain probe.
 //
 //   appendUniqueSuffix('building-a-rest-api') // 'building-a-rest-api-3f9c1a7b2e'
 export function appendUniqueSuffix(base: string): string {
@@ -76,10 +81,10 @@ type MongoServerError = {
 const DUPLICATE_KEY_CODE = 11000
 
 // Recognises the unique index catching the race `generateUniqueSlug` cannot
-// close by itself: it probes for a free slug and returns it, and the insert
-// happens afterwards, so a concurrent write can claim the same slug in between.
-// Knowing the guard fired lets the caller pick another slug instead of
-// reporting a server fault.
+// close by itself: it returns a slug that is free at the moment it reads, and
+// the insert happens afterwards, so a concurrent write can claim the same slug
+// in between. Knowing the guard fired lets the caller pick another slug instead
+// of reporting a server fault.
 //
 // The index the duplicate landed on is checked as well as the error code, so a
 // duplicate on any other unique index is not mistaken for a slug collision.
