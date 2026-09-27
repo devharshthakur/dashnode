@@ -34,6 +34,15 @@
     "typecheck": {
       "dependsOn": ["transit"],
       "outputs": []
+    },
+    "test": {
+      "dependsOn": ["transit"],
+      "cache": false,
+      "outputs": []
+    },
+    "test:watch": {
+      "cache": false,
+      "persistent": true
     }
   }
 }
