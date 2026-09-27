@@ -8,6 +8,7 @@ import {
   PostNotFoundError,
 } from '#errors/post'
 import { requireAuth } from '#middlewares/auth'
+import { requireTrustedOrigin } from '#middlewares/origin'
 import {
   createPostBodySchema,
   listPostsQuerySchema,
@@ -113,7 +114,7 @@ postsRouter.get('/:slug', async (req: Request<{ slug: string }>, res, next) => {
   }
 })
 
-postsRouter.post('/', requireAuth, async (req, res) => {
+postsRouter.post('/', requireTrustedOrigin, requireAuth, async (req, res) => {
   const parsed = createPostBodySchema.safeParse(req.body)
 
   if (!parsed.success) {
@@ -128,6 +129,7 @@ postsRouter.post('/', requireAuth, async (req, res) => {
 
 postsRouter.put(
   '/:id',
+  requireTrustedOrigin,
   requireAuth,
   async (req: Request<{ id: string }>, res, next) => {
     const parsed = updatePostBodySchema.safeParse(req.body)
@@ -149,6 +151,7 @@ postsRouter.put(
 
 postsRouter.delete(
   '/:id',
+  requireTrustedOrigin,
   requireAuth,
   async (req: Request<{ id: string }>, res, next) => {
     try {

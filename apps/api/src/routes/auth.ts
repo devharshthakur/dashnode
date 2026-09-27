@@ -2,6 +2,7 @@ import { Router } from 'express'
 
 import { EmailTakenError, InvalidCredentialsError } from '#errors/auth'
 import { requireAuth } from '#middlewares/auth'
+import { requireTrustedOrigin } from '#middlewares/origin'
 import { loginBodySchema, registerBodySchema } from '#schemas/auth'
 import { loginUser, registerUser, revokeToken } from '#services/auth'
 import {
@@ -75,7 +76,7 @@ authRouter.post('/login', async (req, res, next) => {
   }
 })
 
-authRouter.post('/logout', async (req, res, next) => {
+authRouter.post('/logout', requireTrustedOrigin, async (req, res, next) => {
   const token: unknown = req.cookies?.[AUTH_COOKIE_NAME]
   let session: VerifiedSession | null = null
 
