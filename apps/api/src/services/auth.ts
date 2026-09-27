@@ -4,6 +4,8 @@ import { EmailTakenError, InvalidCredentialsError } from '#errors/auth'
 import { RevokedToken } from '#models/revoked-token'
 import { User, type UserDocument } from '#models/user'
 
+// Callers pass passwords already bounded to PASSWORD_MAX_BYTES UTF-8 bytes by
+// `#schemas/auth`, so bcrypt hashes every character the user supplied.
 const PASSWORD_SALT_ROUNDS = 10
 
 export interface LoginUserInput {
