@@ -4,6 +4,10 @@ This file provides guidance to AI coding agents like Claude Code (claude.ai/code
 
 pnpm + Turborepo monorepo with `apps/web` (TanStack Start/React; not yet connected to the API), `apps/api` (Express 5 + Mongoose), and shared/config packages. The API owns validation, authentication, and data access.
 
+## Read-only files
+
+- `PRD.md` is read-only: never edit, rewrite, or "correct" it. Its stack intentionally deviates from this repository — the PRD describes a plain JavaScript MERN build (Vite + React, React Router, Axios, JWT in `localStorage`), while this repo uses TypeScript, TanStack Start, pnpm + Turborepo, Express 5 + Mongoose, and JWT in HttpOnly cookies. These deviations are deliberate; treat the code in this repository as the source of truth and leave `PRD.md` untouched. OpenCode also hard-denies edits to it in `.opencode/opencode.json`.
+
 ## Validation
 
 - Run `pnpm validate` from the repository root after edits; it runs `turbo run lint check typecheck` across packages. It is the only standard validation command — do not run individual lint, formatting, or typecheck commands, or builds, unless the user explicitly requests them. Resolve any failures before reporting completion.
@@ -50,6 +54,6 @@ Verify a running API with `curl http://localhost:3001/api/health`.
 
 - [SETUP.md](./SETUP.md) — local setup, commands, deployment plan.
 - [ARCHITECTURE.md](./ARCHITECTURE.md) — structure and data flow; its endpoint list is behind the code, so trust `apps/api/README.md` for what exists.
-- [PRD.md](./PRD.md) — product requirements and the full API specification.
+- [PRD.md](./PRD.md) — product requirements and the full API specification. Read-only; never edit it (see Read-only files).
 - Per-app READMEs: `apps/api/README.md` (current endpoint checklist), `apps/web/README.md`, `packages/shared/README.md`.
 - `.agents/skills/` — project-local skills for shadcn UI, `@shadcn/lint`, tsdown, and Turborepo when working in those areas.
