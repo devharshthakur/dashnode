@@ -21,7 +21,7 @@ Items follow the [REST API requirements](../../PRD.md#5-rest-api-specification).
 
 - [x] `GET /api/posts` — list published posts, one bounded page at a time; supports title search and tag filtering.
 - [x] `GET /api/posts/:slug` — return a published post by slug.
-- [x] `POST /api/posts` — create a draft or published post.
+- [x] `POST /api/posts` — create a draft or published post; two requests for the same new title both succeed, on `title` and `title-1`.
 - [x] `PUT /api/posts/:id` — update the author's own post.
 - [x] `DELETE /api/posts/:id` — delete the author's own post.
 - [x] `GET /api/posts/mine/list` — list the signed-in user's drafts and published posts, one bounded page at a time.
@@ -43,6 +43,8 @@ Protected routes answer `401 Unauthorized` only when the session itself is rejec
 Because a browser attaches the session cookie to any request it is told to send — including a form POST from another site — every route that writes on behalf of the signed-in user (`POST /api/posts`, `PUT /api/posts/:id`, `DELETE /api/posts/:id`, `PUT /api/users/me`, and `POST /api/auth/logout`) first checks that the request's `Origin` header is one of the `CORS_ORIGIN` entries. CORS alone is not enough: it stops a foreign site from reading the response, but not from triggering the write. A request that declares no origin is rejected with `403`, so non-browser clients calling these endpoints must send an `Origin` header themselves. Read-only routes are unaffected.
 
 Public feeds order posts by `publishedAt`, which is stamped when a post is first published (or republished after being unpublished) and left unchanged by later edits.
+
+A post's slug is derived from its title and must be unique, and choosing one is a separate step from storing it, so two concurrent `POST /api/posts` requests for the same new title can pick the same slug. The unique index on `slug` is the final protection, and a request it rejects simply takes a different slug and writes again, so a lost race never fails the request and never becomes a `5xx`: both posts are stored, under `title` and `title-1`. Once a request has lost more than one race it stops competing for a readable slug and appends a random token to the title instead (`title-a7f3c19e02`), which no concurrent request can be holding. Only a duplicate on the slug index is handled this way; any other database failure is left to the generic `500`, so a server fault is still reported as one.
 
 Request bodies are parsed as JSON and capped at 1 MB. A body the parser refuses is the client's mistake, not a server fault: malformed JSON gets `400 Bad Request`, a body over the limit gets `413 Payload Too Large`, and an unsupported charset or content encoding gets `415 Unsupported Media Type`. Each response carries only that status message. Anything else that throws is answered with a generic `500 Internal Server Error` and no stack trace, so an unexpected failure never leaks internals. `400` on a write is therefore always a request the client should fix and resend, never a transient condition to retry.
 
