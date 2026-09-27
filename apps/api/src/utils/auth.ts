@@ -10,10 +10,8 @@ const SESSION_TTL_SECONDS = 7 * 24 * 60 * 60
 
 const secret = new TextEncoder().encode(env.JWT_SECRET)
 
-/**
- * Cookie attributes shared by set and clear. They must match exactly, otherwise
- * the browser treats the cleared cookie as a different one.
- */
+// Set and clear must agree on these exactly, otherwise the browser treats the
+// cleared cookie as a different one and keeps sending the original.
 function authCookieOptions(): CookieOptions {
   const isProduction = env.NODE_ENV === 'production'
 
@@ -37,10 +35,8 @@ export interface VerifiedSession {
   expiresAt: Date
 }
 
-/**
- * Signs a short-lived session JWT whose subject is the user id. The token is
- * meant to travel in the HttpOnly auth cookie, never in application state.
- */
+// The token is meant to travel in the HttpOnly auth cookie and nowhere else —
+// never in application state the client could read or replay.
 export async function signSessionToken(userId: string): Promise<string> {
   return new SignJWT()
     .setProtectedHeader({ alg: 'HS256' })
@@ -53,11 +49,9 @@ export async function signSessionToken(userId: string): Promise<string> {
 
 /**
  * Verifies a session JWT and returns its subject (the user id) plus the claims
- * needed to revoke it.
- *
- * Throws when the token is malformed, expired, has an invalid signature, or
- * carries no subject, id, or expiry. Callers translate that into an
- * unauthenticated response.
+ * needed to revoke it. Throws when the token is malformed, expired, has an
+ * invalid signature, or carries no subject, id, or expiry; callers translate
+ * that into an unauthenticated response.
  */
 export async function verifySessionToken(
   token: string,
@@ -83,9 +77,6 @@ export async function verifySessionToken(
   }
 }
 
-/**
- * Sets the session cookie.
- */
 export function setAuthCookie(res: Response, token: string): void {
   res.cookie(AUTH_COOKIE_NAME, token, {
     ...authCookieOptions(),
@@ -93,10 +84,8 @@ export function setAuthCookie(res: Response, token: string): void {
   })
 }
 
-/**
- * Clears the session cookie so the browser stops sending it. Logout has to
- * happen server-side because an HttpOnly cookie is invisible to JavaScript.
- */
+// Logout has to happen server-side because an HttpOnly cookie is invisible to
+// JavaScript, so the client cannot drop the session on its own.
 export function clearAuthCookie(res: Response): void {
   res.clearCookie(AUTH_COOKIE_NAME, authCookieOptions())
 }

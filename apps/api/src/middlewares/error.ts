@@ -7,20 +7,21 @@ import { logger } from '#config/logger'
 /** An error tagged with the HTTP status the request that caused it deserves. */
 type HttpError = Error & { expose?: unknown; status?: unknown; type?: unknown }
 
+// `bodyParser.json()` reports a body it refuses through `http-errors`, which
+// stamps the error with the status it means: `400` for a body that will not
+// parse, `413` for one over the configured limit, `415` for an unsupported
+// charset or content encoding. That is the same field Express's own default
+// handler reads before answering with a status instead of a blanket failure, so
+// honoring it keeps this middleware in step with the parser rather than
+// restating its error types.
+//
+// Only a `4xx` counts, and only an error that sets `expose` — the `http-errors`
+// flag for a message safe to show a client. Nothing else in this service sets
+// either field, so every other failure stays on the generic `500` below.
+
 /**
- * Reads the client-error status off a rejected request body.
- *
- * `bodyParser.json()` reports a body it refuses through `http-errors`, which
- * stamps the error with the status it means: `400` for a body that will not
- * parse, `413` for one over the configured limit, `415` for an unsupported
- * charset or content encoding. That is the same field Express's own default
- * handler reads before answering with a status instead of a blanket failure, so
- * honoring it keeps this middleware in step with the parser rather than
- * restating its error types.
- *
- * Only a `4xx` counts, and only an error that sets `expose` — the `http-errors`
- * flag for a message safe to show a client. Nothing else in this service sets
- * either field, so every other failure stays on the generic `500` below.
+ * The status the body parser set for an unreadable body, or `null` when the
+ * failure is not a client error.
  */
 function clientErrorStatus(err: Error): number | null {
   const { expose, status } = err as HttpError
