@@ -17,8 +17,12 @@ import { Tag } from '#models/tag'
 import {
   type PopulatedAuthor,
   type PopulatedTag,
-  type PostCardSource,
+  type PostCardPage,
   type PostDetailSource,
+  type PostPageQuery,
+  type PostSortField,
+  POST_CARD_FIELDS,
+  postCursorFor,
 } from '#utils/post'
 import { generateUniqueSlug } from '#utils/slug'
 import { withTransaction } from '#utils/transaction'
@@ -200,17 +204,55 @@ export interface ListPublishedPostsQuery {
   search?: string
   /** Tag slug; an unknown slug yields an empty feed, never an error. */
   tag?: string
+  /** Author id; set when a public profile asks for that author's posts. */
+  author?: string
 }
 
 /**
- * Loads the public feed: published posts only, most recently published first.
- * The status filter is applied before any search or tag clause so drafts can
- * never leak into a public response. Author and tags are populated for feed
- * cards.
+ * Reads one page of post cards. Lists page by keyset over `(sortField, _id)`
+ * descending, so each page costs the same no matter how deep the client has
+ * paged and ties keep a deterministic order. One extra row is read to learn
+ * whether a next page exists without counting the whole result.
+ */
+async function findPostCardPage(
+  filter: QueryFilter<PostDocument>,
+  sortField: PostSortField,
+  page: PostPageQuery,
+): Promise<PostCardPage> {
+  if (page.cursor) {
+    filter.$or = [
+      { [sortField]: { $lt: page.cursor.at } },
+      { [sortField]: page.cursor.at, _id: { $lt: page.cursor.id } },
+    ]
+  }
+
+  const posts = await Post.find(filter)
+    .select(POST_CARD_FIELDS)
+    .sort({ [sortField]: -1, _id: -1 })
+    .limit(page.limit + 1)
+    .populate<{ author: PopulatedAuthor }>('author', 'name avatarUrl')
+    .populate<{ tags: PopulatedTag[] }>('tags', 'name slug')
+    .lean()
+
+  const hasNextPage = posts.length > page.limit
+  const pagePosts = posts.slice(0, page.limit)
+  const last = pagePosts.at(-1)
+
+  return {
+    posts: pagePosts,
+    nextCursor: hasNextPage && last ? postCursorFor(last, sortField) : null,
+  }
+}
+
+/**
+ * Loads one page of the public feed: published posts only, most recently
+ * published first. The status filter is applied before any search, tag, or
+ * author clause so drafts can never leak into a public response.
  */
 export async function listPublishedPosts(
   query: ListPublishedPostsQuery,
-): Promise<PostCardSource[]> {
+  page: PostPageQuery,
+): Promise<PostCardPage> {
   const filter: QueryFilter<PostDocument> = { status: 'published' }
 
   if (query.search !== undefined) {
@@ -221,30 +263,28 @@ export async function listPublishedPosts(
     const tag = await Tag.findOne({ slug: query.tag }).lean()
 
     if (!tag) {
-      return []
+      return { posts: [], nextCursor: null }
     }
 
     filter.tags = tag._id
   }
 
-  const posts = await Post.find(filter)
-    .sort({ publishedAt: -1 })
-    .populate<{ author: PopulatedAuthor }>('author', 'name avatarUrl')
-    .populate<{ tags: PopulatedTag[] }>('tags', 'name slug')
-    .lean()
+  if (query.author !== undefined) {
+    filter.author = query.author
+  }
 
-  return posts
+  return findPostCardPage(filter, 'publishedAt', page)
 }
 
-/** Loads all posts owned by a user, newest first, for the private dashboard. */
-export async function listUserPosts(userId: string): Promise<PostCardSource[]> {
-  const posts = await Post.find({ author: userId })
-    .sort({ createdAt: -1 })
-    .populate<{ author: PopulatedAuthor }>('author', 'name avatarUrl')
-    .populate<{ tags: PopulatedTag[] }>('tags', 'name slug')
-    .lean()
-
-  return posts
+/**
+ * Loads one page of a user's posts, drafts included, newest first, for the
+ * private dashboard.
+ */
+export async function listUserPosts(
+  userId: string,
+  page: PostPageQuery,
+): Promise<PostCardPage> {
+  return findPostCardPage({ author: userId }, 'createdAt', page)
 }
 
 /** Loads one public post by slug; drafts are indistinguishable from missing posts. */

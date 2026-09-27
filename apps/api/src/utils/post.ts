@@ -7,6 +7,29 @@ import type {
 import type { HydratedDocument, Types } from 'mongoose'
 
 import type { PostDocument } from '#models/post'
+import { encodePostCursor, type PostCursor } from '#utils/cursor'
+
+/**
+ * Fields a list card needs. List queries select this projection so reading a
+ * page never loads the stored Markdown body.
+ */
+export const POST_CARD_FIELDS =
+  'title slug excerpt coverImage status publishedAt author tags createdAt updatedAt'
+
+/** Timestamp fields post lists can order and paginate by. */
+export type PostSortField = 'publishedAt' | 'createdAt'
+
+/** Page size and keyset position accepted by post list queries. */
+export interface PostPageQuery {
+  limit: number
+  cursor?: PostCursor
+}
+
+/** One page of post cards plus the token that reaches the following page. */
+export interface PostCardPage {
+  posts: PostCardSource[]
+  nextCursor: string | null
+}
 
 /**
  * Maps a post document to the shared wire contract: `id` instead of `_id`, no
@@ -64,6 +87,19 @@ export interface PostCardSource {
 /** Lean post detail with populated author and tag projections. */
 export interface PostDetailSource extends PostCardSource {
   content: string
+}
+
+/**
+ * Cursor pointing past `post` in a list ordered by `sortField` descending.
+ * Returns null when the post has no timestamp to anchor the cursor.
+ */
+export function postCursorFor(
+  post: PostCardSource,
+  sortField: PostSortField,
+): string | null {
+  const at = post[sortField]
+
+  return at ? encodePostCursor(at, post._id) : null
 }
 
 /**

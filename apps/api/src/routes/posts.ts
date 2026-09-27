@@ -11,6 +11,7 @@ import { requireAuth } from '#middlewares/auth'
 import {
   createPostBodySchema,
   listPostsQuerySchema,
+  postPageQuerySchema,
   updatePostBodySchema,
 } from '#schemas/post'
 import {
@@ -58,8 +59,12 @@ postsRouter.get('/', async (req, res) => {
     return
   }
 
-  const posts = await listPublishedPosts(parsed.data)
-  const body: PostListResponse = { posts: posts.map(toPostCardDto) }
+  const { search, tag, ...page } = parsed.data
+  const result = await listPublishedPosts({ search, tag }, page)
+  const body: PostListResponse = {
+    posts: result.posts.map(toPostCardDto),
+    nextCursor: result.nextCursor,
+  }
 
   res.status(200).json(body)
 })
@@ -67,8 +72,18 @@ postsRouter.get('/', async (req, res) => {
 // Two segments keep the dashboard out of the public `/:slug` space, so no
 // published post slug can shadow it. Must stay above `/mine/:id`.
 postsRouter.get('/mine/list', requireAuth, async (req, res) => {
-  const posts = await listUserPosts(req.user!.id)
-  const body: PostListResponse = { posts: posts.map(toPostCardDto) }
+  const parsed = postPageQuerySchema.safeParse(req.query)
+
+  if (!parsed.success) {
+    sendValidationError(res, parsed.error)
+    return
+  }
+
+  const result = await listUserPosts(req.user!.id, parsed.data)
+  const body: PostListResponse = {
+    posts: result.posts.map(toPostCardDto),
+    nextCursor: result.nextCursor,
+  }
 
   res.status(200).json(body)
 })
