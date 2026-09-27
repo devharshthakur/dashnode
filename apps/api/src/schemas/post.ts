@@ -2,6 +2,7 @@ import { z } from 'zod'
 
 import { DEFAULT_POST_PAGE_SIZE, MAX_POST_PAGE_SIZE } from '#config/constants'
 import { POST_STATUSES } from '#models/post'
+import { imageUrlSchema } from '#schemas/image'
 import { decodePostCursor } from '#utils/cursor'
 import { slugify } from '#utils/slug'
 
@@ -24,7 +25,7 @@ const postBodySchema = z.object({
     message: 'Content is required',
   }),
   tags: z.array(tagNameSchema).min(1).max(10),
-  coverImage: z.string().trim().max(2048).optional(),
+  coverImage: imageUrlSchema.optional(),
   excerpt: z.string().min(1).max(250).optional(),
   status: z.enum(POST_STATUSES),
 })

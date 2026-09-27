@@ -19,10 +19,12 @@ export interface RegisterUserInput {
   password: string
 }
 
+// Only the fields the request carried are set, so an omitted field keeps its
+// stored value instead of being overwritten with `undefined`.
 export interface UpdateUserProfileInput {
-  name: string
-  bio: string
-  avatarUrl: string
+  name?: string
+  bio?: string
+  avatarUrl?: string
 }
 
 export interface SafeUser {
@@ -124,9 +126,13 @@ export async function updateUserProfile(
   userId: string,
   input: UpdateUserProfileInput,
 ): Promise<SafeUser | null> {
+  const changed = Object.fromEntries(
+    Object.entries(input).filter(([, value]) => value !== undefined),
+  )
+
   const user = await User.findByIdAndUpdate(
     userId,
-    { $set: input },
+    { $set: changed },
     {
       returnDocument: 'after',
       runValidators: true,
