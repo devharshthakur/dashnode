@@ -5,7 +5,8 @@ import { POST_STATUSES } from '#models/post'
 import { decodePostCursor } from '#utils/cursor'
 import { slugify } from '#utils/slug'
 
-/** True when `value` still yields a usable slug after slugification. */
+// True when `value` still yields a usable slug after slugification; an input
+// that folds to nothing is rejected before it can produce an unreachable URL.
 function isSlugifiable(value: string): boolean {
   return slugify(value).length > 0
 }
@@ -35,9 +36,8 @@ export const createPostBodySchema = postBodySchema.extend({
 export const updatePostBodySchema = postBodySchema.partial()
 
 /**
- * Cursor for the next page of a post list. A malformed value is rejected here
- * instead of silently returning the first page, so clients notice a broken
- * token immediately.
+ * A malformed cursor is rejected here instead of silently returning the first
+ * page, so clients notice a broken token immediately.
  */
 const postCursorSchema = z
   .string()
@@ -53,10 +53,8 @@ const postCursorSchema = z
     return cursor
   })
 
-/**
- * Shared by every endpoint that lists posts: a bounded page size plus the
- * keyset position that reaches the next page.
- */
+// Shared by every endpoint that lists posts: a bounded page size plus the
+// keyset position that reaches the next page.
 export const postPageQuerySchema = z.object({
   limit: z.coerce
     .number()

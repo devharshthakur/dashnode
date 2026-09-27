@@ -12,10 +12,7 @@ export interface PublicUserProfile {
   nextCursor: string | null
 }
 
-/**
- * Loads a public user profile and one page of that author's published posts,
- * most recently published first.
- */
+// The profile is a projection, so the email and the password hash never load.
 export async function getPublicUserProfile(
   userId: string,
   page: PostPageQuery,

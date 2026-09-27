@@ -9,23 +9,20 @@ import type { HydratedDocument, Types } from 'mongoose'
 import type { PostDocument } from '#models/post'
 import { encodePostCursor, type PostCursor } from '#utils/cursor'
 
-/**
- * Fields a list card needs. List queries select this projection so reading a
- * page never loads the stored Markdown body.
- */
+// List queries select this projection, so reading a page never loads the
+// stored Markdown body.
 export const POST_CARD_FIELDS =
   'title slug excerpt coverImage status publishedAt author tags createdAt updatedAt'
 
-/** Timestamp fields post lists can order and paginate by. */
 export type PostSortField = 'publishedAt' | 'createdAt'
 
-/** Page size and keyset position accepted by post list queries. */
+// Page size and keyset position accepted by post list queries.
 export interface PostPageQuery {
   limit: number
   cursor?: PostCursor
 }
 
-/** One page of post cards plus the token that reaches the following page. */
+// One page of post cards plus the token that reaches the following page.
 export interface PostCardPage {
   posts: PostCardSource[]
   nextCursor: string | null
@@ -84,7 +81,7 @@ export interface PostCardSource {
   updatedAt: Date
 }
 
-/** Lean post detail with populated author and tag projections. */
+// Lean post detail: the card source plus the raw Markdown body.
 export interface PostDetailSource extends PostCardSource {
   content: string
 }
@@ -130,7 +127,6 @@ export function toPostCardDto(post: PostCardSource): PostCardDto {
   }
 }
 
-/** Maps a populated post detail while preserving its raw Markdown body. */
 export function toPostDetailDto(post: PostDetailSource): PostDetailDto {
   return {
     ...toPostCardDto(post),

@@ -35,32 +35,24 @@ import { withTransaction } from '#utils/transaction'
 
 const EXCERPT_MAX_LENGTH = 250
 
-/**
- * How many attempts at creating a post read the stored slugs before giving up on
- * a readable one. A request that only ever reads can keep competing with the
- * requests that are still writing, so this is small on purpose: past it the
- * slug carries a token instead, which resolves the race outright.
- */
+// How many attempts at creating a post read the stored slugs before giving up on
+// a readable one. A request that only ever reads can keep competing with the
+// requests that are still writing, so this is small on purpose: past it the slug
+// carries a token instead, which resolves the race outright.
 const READABLE_SLUG_ATTEMPTS = 2
 
-/**
- * Builds the feed preview from raw Markdown when the client did not supply an
- * excerpt. The API stores Markdown verbatim and never parses or renders it, so
- * this applies only the model's 250-char cap; the client owns rendering.
- */
+// The API stores Markdown verbatim and never parses or renders it, so the
+// excerpt is only the model's 250-char cap; the client owns rendering.
 function deriveExcerpt(content: string): string {
   return content.slice(0, EXCERPT_MAX_LENGTH)
 }
 
-/**
- * Maps tag names to Tag ids, reusing a tag whose display name already matches
- * and creating one otherwise. A tag's name is stored apart from its URL slug,
- * so names such as `Node.js` stay readable and distinct names that slugify
- * alike (`C++`, `C#`) get a stable unique suffix instead of merging. Reuse is
- * keyed on the name so re-selecting a tag stays stable even after its slug was
- * suffixed. Callers pass the surrounding transaction session so post and tag
- * writes commit together.
- */
+// A tag's name is stored apart from its URL slug, so names such as `Node.js`
+// stay readable and distinct names that slugify alike (`C++`, `C#`) get a
+// stable unique suffix instead of merging. Reuse is keyed on the name, so
+// re-selecting a tag stays stable even after its slug was suffixed. Callers
+// pass the surrounding transaction session so post and tag writes commit
+// together.
 async function resolveTagIds(
   tags: string[],
   session: ClientSession,
@@ -85,11 +77,9 @@ async function resolveTagIds(
   return tagIds
 }
 
-/**
- * Loads a post and verifies the caller authored it before any mutation. Unknown
- * ids and malformed ids are distinguished from the ownership failure so routes
- * can answer with 404, 400, and 403 respectively.
- */
+// Loads a post and verifies the caller authored it before any mutation. Unknown
+// ids and malformed ids are distinguished from the ownership failure so routes
+// can answer with 404, 400, and 403 respectively.
 async function loadOwnedPost(
   postId: string,
   userId: string,
@@ -112,18 +102,18 @@ async function loadOwnedPost(
   return post
 }
 
+// The author comes from the session, never the request body, and the slug is
+// the only thing a retried attempt may change: each one runs its own
+// transaction, so a rejected write leaves no post and no tags behind.
+//
+// The slug is read before it is written, so two requests for the same new title
+// can pick the same one. The unique index on `slug` is the final protection, and
+// a request it rejects simply takes a different slug and writes again, so every
+// concurrent create ends up stored under a slug of its own.
+
 /**
- * Creates a post owned by `authorId`. The slug is derived from the title, the
- * author comes from the session (never the request body), and tags are linked
- * or created in the same transaction so a failed write leaves nothing behind.
- * A post created as published is stamped with its publication date; a draft
- * starts with none.
- *
- * The slug is read before it is written, so two requests for the same new title
- * can pick the same one. The unique index on `slug` is the final protection, and
- * a request it rejects simply takes a different slug and writes again, so every
- * concurrent create ends up stored under a slug of its own. Only that one error
- * is retried; any other database failure propagates untouched.
+ * Only the duplicate-slug error is retried; any other database failure
+ * propagates untouched.
  */
 export async function createPost(
   authorId: string,
@@ -132,11 +122,8 @@ export async function createPost(
   const base = slugify(input.title)
 
   for (let attempt = 1; ; attempt += 1) {
-    // The first attempts keep the slug readable, reading what is stored so the
-    // request that lost a race lands on `title-1`. After that the request stops
-    // competing for a readable slug and takes one carrying a token of its own,
-    // which no other request can be holding — so the write cannot be refused
-    // again, and this never runs out of attempts.
+    // The token suffix cannot be claimed by another request, so an attempt
+    // past the readable ones always lands: this loop never runs out of tries.
     const slug =
       attempt <= READABLE_SLUG_ATTEMPTS
         ? await generateUniqueSlug(input.title, Post)
@@ -157,7 +144,8 @@ export async function createPost(
   }
 }
 
-/** Stores the post under `slug`, tagging and writing it in one transaction. */
+// Split out of the retry loop so each attempt can store a different `slug` while
+// the post and its tags still commit as one unit.
 async function writePost(
   authorId: string,
   input: CreatePostInput,
@@ -189,14 +177,9 @@ async function writePost(
   })
 }
 
-/**
- * Updates a post after the ownership check. The slug stays stable across edits
- * so published URLs do not break. A new body refreshes the derived excerpt
- * unless the request supplied one explicitly. A draft→published transition
- * stamps a fresh publication date; editing an already published post keeps its
- * original date. Republishing an unpublished post is treated as a new
- * publication and therefore gets a new date.
- */
+// The slug stays stable across edits so published URLs do not break. A body
+// without an explicit excerpt re-derives one; an excerpt in the request always
+// wins, even alongside new content.
 export async function updatePost(
   postId: string,
   userId: string,
@@ -242,7 +225,6 @@ export async function updatePost(
   })
 }
 
-/** Deletes a post after the ownership check. */
 export async function deletePost(
   postId: string,
   userId: string,
@@ -261,12 +243,10 @@ export interface ListPublishedPostsQuery {
   author?: string
 }
 
-/**
- * Reads one page of post cards. Lists page by keyset over `(sortField, _id)`
- * descending, so each page costs the same no matter how deep the client has
- * paged and ties keep a deterministic order. One extra row is read to learn
- * whether a next page exists without counting the whole result.
- */
+// Reads one page of post cards. Lists page by keyset over `(sortField, _id)`
+// descending, so each page costs the same no matter how deep the client has
+// paged and ties keep a deterministic order. One extra row is read to learn
+// whether a next page exists without counting the whole result.
 async function findPostCardPage(
   filter: QueryFilter<PostDocument>,
   sortField: PostSortField,
@@ -297,11 +277,9 @@ async function findPostCardPage(
   }
 }
 
-/**
- * Loads one page of the public feed: published posts only, most recently
- * published first. The status filter is applied before any search, tag, or
- * author clause so drafts can never leak into a public response.
- */
+// The status filter is the first clause built, so a search, tag, or author
+// condition can only ever narrow published posts and never let a draft into a
+// public response.
 export async function listPublishedPosts(
   query: ListPublishedPostsQuery,
   page: PostPageQuery,
@@ -329,10 +307,7 @@ export async function listPublishedPosts(
   return findPostCardPage(filter, 'publishedAt', page)
 }
 
-/**
- * Loads one page of a user's posts, drafts included, newest first, for the
- * private dashboard.
- */
+// The owner's own view, so unlike the public feed it includes drafts.
 export async function listUserPosts(
   userId: string,
   page: PostPageQuery,
@@ -340,7 +315,7 @@ export async function listUserPosts(
   return findPostCardPage({ author: userId }, 'createdAt', page)
 }
 
-/** Loads one public post by slug; drafts are indistinguishable from missing posts. */
+/** Throws `PostNotFoundError` for an unknown slug and for a draft alike. */
 export async function getPublishedPostBySlug(
   slug: string,
 ): Promise<PostDetailSource> {

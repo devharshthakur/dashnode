@@ -7,19 +7,19 @@ import {
   type VerifiedSession,
 } from '#utils/auth'
 
+// A `401` from here tells the client its session is gone, and clients act on
+// that by logging out and throwing the cookie away. A database failure must not
+// look like that, so it travels to the error handler as a `500` and leaves the
+// cookie in place for when the database recovers.
+//
+// Every protected route must use this middleware: route guards in the web app
+// are user-experience aids, not an authorization boundary.
+
 /**
- * Rejects the request unless it carries a valid session cookie that has not
- * been blacklisted and whose user still exists. On success it attaches the safe
- * user to `req.user`.
- *
- * Only a session this middleware can positively disprove is answered with
- * `401`. The database reads a valid session needs can fail on their own, and a
- * failure there says nothing about the session, so it is passed to the error
- * handler as a `500`: clients treat `401` as "log me out" and would otherwise
- * discard a cookie that is still good once the database recovers.
- *
- * Every protected route must use this middleware: route guards in the web app
- * are user-experience aids, not an authorization boundary.
+ * Attaches the safe user to `req.user`, or answers `401` unless the request
+ * carries a valid session cookie that has not been blacklisted and whose user
+ * still exists. A failed session lookup is passed to the error handler as a
+ * `500` rather than refused.
  */
 export async function requireAuth(
   req: Request,

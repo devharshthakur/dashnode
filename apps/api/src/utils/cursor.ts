@@ -10,11 +10,8 @@ export interface PostCursor {
   id: Types.ObjectId
 }
 
-/**
- * Encodes a list position as an opaque URL-safe cursor. Lists page by keyset
- * instead of offset so a request never reads more rows than one page needs,
- * however deep the client has paged.
- */
+// Lists page by keyset instead of offset so a request never reads more rows
+// than one page needs, however deep the client has paged.
 export function encodePostCursor(at: Date, id: Types.ObjectId): string {
   return Buffer.from(`${at.toISOString()}|${id}`).toString('base64url')
 }
