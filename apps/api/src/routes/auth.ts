@@ -1,6 +1,7 @@
 import { Router } from 'express'
 
 import { EmailTakenError, InvalidCredentialsError } from '#errors/auth'
+import { sendValidationError } from '#errors/route'
 import { requireAuth } from '#middlewares/auth'
 import { requireTrustedOrigin } from '#middlewares/origin'
 import { loginBodySchema, registerBodySchema } from '#schemas/auth'
@@ -20,13 +21,7 @@ authRouter.post('/register', async (req, res, next) => {
   const parsed = registerBodySchema.safeParse(req.body)
 
   if (!parsed.success) {
-    res.status(400).json({
-      error: 'Validation Error',
-      details: parsed.error.issues.map((issue) => ({
-        path: issue.path.join('.'),
-        message: issue.message,
-      })),
-    })
+    sendValidationError(res, parsed.error)
     return
   }
 
@@ -50,13 +45,7 @@ authRouter.post('/login', async (req, res, next) => {
   const parsed = loginBodySchema.safeParse(req.body)
 
   if (!parsed.success) {
-    res.status(400).json({
-      error: 'Validation Error',
-      details: parsed.error.issues.map((issue) => ({
-        path: issue.path.join('.'),
-        message: issue.message,
-      })),
-    })
+    sendValidationError(res, parsed.error)
     return
   }
 
