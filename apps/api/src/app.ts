@@ -1,3 +1,4 @@
+import bodyParser from 'body-parser'
 import cookieParser from 'cookie-parser'
 import cors from 'cors'
 import express from 'express'
@@ -12,7 +13,7 @@ export function App() {
 
   app.use(httpLogger)
   app.use(cors(corsOptions))
-  app.use(express.json({ limit: '1mb' }))
+  app.use(bodyParser.json({ limit: '1mb' }))
   app.use(cookieParser())
   app.use(API_PREFIX, apiRouter)
   app.use(notFoundHandler)
