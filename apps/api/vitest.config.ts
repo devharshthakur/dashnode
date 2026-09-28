@@ -8,6 +8,8 @@ export default defineConfig({
     // `globals` stays off so test files import `describe` / `it` / `expect`
     // explicitly, the same way the source imports what it uses.
     setupFiles: ['src/test/setup.ts'],
+    // One in-memory replica set for the whole run, stopped when it ends.
+    globalSetup: ['src/test/global-setup.ts'],
     // Vitest sets `NODE_ENV=test` before any setup file runs, and that is what
     // makes `src/env.ts` load `.env.test`.
     testTimeout: 30_000,
