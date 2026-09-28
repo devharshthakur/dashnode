@@ -101,10 +101,17 @@ describe('GET /api/posts', () => {
     ])
   })
 
-  it('filters by title search and by tag slug', async () => {
+  // A filter may narrow the feed, never widen it: the draft below matches both
+  // the search term and the tag, and it must stay out of both answers.
+  it('filters by title search and by tag slug, and keeps drafts out of both', async () => {
     const user = await createUser()
     await createPost(user, { title: 'Express routing in practice' })
     await createPost(user, { title: 'PostgreSQL tuning', tags: ['db'] })
+    await createPost(user, {
+      status: 'draft',
+      title: 'Express routing in progress',
+      tags: ['db'],
+    })
 
     const search = await api().get('/api/posts?search=routing')
     const byTag = await api().get('/api/posts?tag=db')
@@ -113,7 +120,9 @@ describe('GET /api/posts', () => {
     expect(
       search.body.posts.map((post: { title: string }) => post.title),
     ).toEqual(['Express routing in practice'])
-    expect(byTag.body.posts).toHaveLength(1)
+    expect(
+      byTag.body.posts.map((post: { title: string }) => post.title),
+    ).toEqual(['PostgreSQL tuning'])
     // An unknown slug is an empty feed, never an error.
     expect(unknownTag.status).toBe(200)
     expect(unknownTag.body).toEqual({ posts: [], nextCursor: null })
