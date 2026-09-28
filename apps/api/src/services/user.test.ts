@@ -70,7 +70,7 @@ describe('getPublicUserProfile', () => {
 
   it('passes the requested page through to the list query', async () => {
     const user = await createUser()
-    await Promise.all(
+    const posts = await Promise.all(
       Array.from({ length: 3 }, (_, index) =>
         createPost(user, {
           publishedAt: new Date(`2024-0${index + 1}-01T00:00:00.000Z`),
@@ -92,5 +92,12 @@ describe('getPublicUserProfile', () => {
     expect(first.nextCursor).not.toBeNull()
     expect(second.posts).toHaveLength(1)
     expect(second.nextCursor).toBeNull()
+    // Counting pages is not enough: a repeated post and a missing one would
+    // satisfy the two lengths above.
+    const ids = [...first.posts, ...second.posts].map((post) =>
+      post._id.toString(),
+    )
+    expect(ids.sort()).toEqual(posts.map((post) => post._id.toString()).sort())
+    expect(new Set(ids).size).toBe(ids.length)
   })
 })
