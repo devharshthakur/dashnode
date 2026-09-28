@@ -10,8 +10,8 @@ pnpm + Turborepo monorepo with `apps/web` (TanStack Start/React; not yet connect
 
 ## Validation
 
-- Run `pnpm validate` from the repository root after edits; it runs `turbo run lint check typecheck` across packages. It is the only standard validation command — do not run individual lint, formatting, or typecheck commands, or builds, unless the user explicitly requests them. Resolve any failures before reporting completion.
-- There is no test runner and no test file in the repository. Do not invent test commands or claim tests passed; `pnpm validate` is the gate.
+- Run `pnpm validate` from the repository root after edits; it runs `turbo run lint check typecheck test` across packages, and the API's tests are part of it. It is the only standard validation command — do not run individual lint, formatting, typecheck, or test commands, or builds, unless the user explicitly requests them. Resolve any failures before reporting completion.
+- `pnpm test` on its own runs the API suite when iterating on a single test; the gate is still `pnpm validate`. Never claim tests passed without a run that says so.
 - The Husky pre-commit hook runs `lint-staged`, which only applies Prettier to changed files.
 
 ## Commands
@@ -19,6 +19,7 @@ pnpm + Turborepo monorepo with `apps/web` (TanStack Start/React; not yet connect
 Node >= 24 (`.nvmrc` pins 24.21.0) and pnpm 12.5.1 (`packageManager`, with `engineStrict`) are required.
 
 - `pnpm install` — install workspace dependencies.
+- `pnpm test` — run the API test suite. No Docker, no `apps/api/.env`, and no running database: the harness starts its own in-memory replica set. The first install downloads a `mongod` binary, which needs network access.
 - `cp apps/api/.env.example apps/api/.env` — first run; then set `JWT_SECRET` to a private value of 32+ characters (`openssl rand -base64 32`).
 - `pnpm --filter api db:up` — start local MongoDB (single-node replica set). It must be running before the API, and it must stay a replica set because post/tag writes use transactions.
 - `pnpm dev` — run all apps: web at `http://localhost:5173`, API at `http://localhost:3001`.
@@ -40,6 +41,7 @@ Verify a running API with `curl http://localhost:3001/api/health`.
 - **Endpoint docs**: check the endpoint off in `apps/api/README.md`; the commit history pairs features with a `docs(api)` update.
 - **Environment/config**: `apps/api/src/env.ts` validates config at startup and exits on failure — add new keys to both that schema and `apps/api/.env.example`.
 - **Docker/Mongo behavior**: `apps/api/compose.yml` (replica-set init) and `src/config/db.ts`.
+- **Test**: `<module>.test.ts` next to the file it covers (`src/services/post.test.ts` for `src/services/post.ts`); a route suite drives `App()` through the helpers in `src/test/` — `api()` for one request, `registeredSession()` / `loggedInSession()` for a signed-in agent that keeps its cookie, `trustedOrigin()` for the `Origin` header a write needs, and the `createUser` / `createPost` / `createTag` factories. `src/test/global-setup.ts` starts the in-memory replica set and `src/test/setup.ts` owns the connection, so a test file never opens one. There is no coverage threshold: the suite is about behavior, and a number taken from the current measurement would only pass by accident.
 
 ## Architecture and conventions
 
