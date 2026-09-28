@@ -253,6 +253,27 @@ describe('updatePost', () => {
     expect(unpublished.publishedAt).toBeNull()
   })
 
+  // The feed follows this date, so republishing has to move the post up. The
+  // first date is written directly, which a stamp that reused the stored value
+  // would leave untouched.
+  it('stamps a new date on every republication', async () => {
+    const author = await createUser()
+    const original = new Date('2021-05-05T05:05:05.000Z')
+    const post = await storePost(author, { publishedAt: original })
+
+    await updatePost(post.id, author.id, { status: 'draft' })
+    const republished = await updatePost(post.id, author.id, {
+      status: 'published',
+    })
+
+    expect(republished.publishedAt?.toISOString()).not.toBe(
+      original.toISOString(),
+    )
+    expect(republished.publishedAt?.getTime()).toBeGreaterThan(
+      Date.parse('2021-06-01T00:00:00.000Z'),
+    )
+  })
+
   it('leaves the publication date alone when the status does not change', async () => {
     const author = await createUser()
     const publishedAt = new Date('2021-05-05T05:05:05.000Z')
@@ -513,6 +534,67 @@ describe('listUserPosts', () => {
       writtenLast._id.toString(),
       writtenFirst._id.toString(),
     ])
+  })
+
+  // The list is keyed on `createdAt`, not the id, so the two orders are made to
+  // disagree: an order by `_id` alone could not produce this list.
+  it('orders by creation date, not by id', async () => {
+    const author = await createUser()
+    const storedFirst = await storePost(author, {
+      createdAt: new Date('2023-01-01T00:00:00.000Z'),
+    })
+    const storedLast = await storePost(author, {
+      createdAt: new Date('2024-01-01T00:00:00.000Z'),
+    })
+
+    const page = await listUserPosts(author.id, { limit: 10 })
+
+    expect(page.posts.map((post) => post._id.toString())).toEqual([
+      storedLast._id.toString(),
+      storedFirst._id.toString(),
+    ])
+  })
+
+  // The dashboard pages on `createdAt` while the feed pages on `publishedAt`,
+  // so the keyset walk is proved here rather than assumed from the feed's.
+  it('pages with a cursor, visiting every post exactly once', async () => {
+    const author = await createUser()
+    // Every post shares one creation date, so the id alone settles the order and
+    // a page boundary cannot hide a duplicate or drop one.
+    const shared = new Date('2024-06-01T00:00:00.000Z')
+    const posts = await Promise.all(
+      Array.from({ length: 7 }, (_, index) =>
+        storePost(author, {
+          status: index % 2 === 0 ? 'draft' : 'published',
+          createdAt: shared,
+        }),
+      ),
+    )
+
+    const seen: string[] = []
+    const cursors: (string | null)[] = []
+
+    for (
+      let page = await listUserPosts(author.id, { limit: 3 });
+      cursors.length < 10;
+    ) {
+      seen.push(...page.posts.map((post) => post._id.toString()))
+      cursors.push(page.nextCursor)
+
+      if (page.nextCursor === null) {
+        break
+      }
+
+      page = await listUserPosts(author.id, {
+        limit: 3,
+        cursor: decodePostCursor(page.nextCursor) ?? undefined,
+      })
+    }
+
+    expect(cursors).toHaveLength(3)
+    expect(cursors.at(-1)).toBeNull()
+    expect(seen.sort()).toEqual(posts.map((post) => post._id.toString()).sort())
+    expect(new Set(seen).size).toBe(seen.length)
   })
 })
 
