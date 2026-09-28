@@ -515,18 +515,59 @@ describe('GET /api/posts/mine/list', () => {
 
   it('lists drafts and published posts, newest first', async () => {
     const session = await author()
-    const draft = await createPost(authorRef(session), { status: 'draft' })
+    // Ordered by creation date, so the post stored first is dated last: an
+    // order by id or by publication date could not produce this list.
+    const draft = await createPost(authorRef(session), {
+      status: 'draft',
+      createdAt: new Date('2024-01-01T00:00:00.000Z'),
+    })
     const published = await createPost(authorRef(session), {
       status: 'published',
+      createdAt: new Date('2023-01-01T00:00:00.000Z'),
     })
 
     const response = await session.agent.get('/api/posts/mine/list')
 
     expect(response.status).toBe(200)
     expect(response.body.posts.map((post: { id: string }) => post.id)).toEqual([
-      published.id,
       draft.id,
+      published.id,
     ])
+  })
+
+  // The dashboard pages on `createdAt`, a different field and a different order
+  // from the public feed, so the walk is proved here rather than assumed. Every
+  // post shares one creation date, so the id alone decides the order and a page
+  // boundary cannot hide a duplicate or drop one.
+  it('walks every dashboard post exactly once', async () => {
+    const session = await author()
+    const shared = new Date('2024-06-01T00:00:00.000Z')
+    const posts = await Promise.all(
+      Array.from({ length: 5 }, (_, index) =>
+        createPost(authorRef(session), {
+          status: index % 2 === 0 ? 'draft' : 'published',
+          createdAt: shared,
+        }),
+      ),
+    )
+
+    const seen: string[] = []
+    let cursor: string | null = '/api/posts/mine/list?limit=2'
+    let pages = 0
+
+    while (cursor !== null && pages < 10) {
+      const response = await session.agent.get(cursor)
+      seen.push(...response.body.posts.map((post: { id: string }) => post.id))
+      cursor =
+        response.body.nextCursor === null
+          ? null
+          : `/api/posts/mine/list?limit=2&cursor=${response.body.nextCursor}`
+      pages += 1
+    }
+
+    expect(pages).toBe(3)
+    expect(seen.sort()).toEqual(posts.map((post) => post.id).sort())
+    expect(new Set(seen).size).toBe(seen.length)
   })
 
   it('never lists another user’s posts', async () => {
