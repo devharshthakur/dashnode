@@ -233,7 +233,10 @@ describe('updateUserProfile', () => {
 })
 
 describe('revocation', () => {
-  const expiresAt = new Date('2026-08-15T00:00:00.000Z')
+  // A date relative to the run, not a fixed one: the TTL index drops a record
+  // once its `expiresAt` passes, so a literal in the past would let the server
+  // delete the document before the assertions below read it.
+  const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
 
   it('remembers a revoked token until it would have expired', async () => {
     await revokeToken('a-jti', expiresAt)
