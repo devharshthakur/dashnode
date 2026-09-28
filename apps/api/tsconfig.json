@@ -3,6 +3,7 @@
   "include": [
     "src",
     "tsdown.config.ts",
+    "vitest.config.ts",
     "eslint.config.js",
     "prettier.config.js"
   ]

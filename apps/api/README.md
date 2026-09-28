@@ -57,3 +57,30 @@ Request bodies are parsed as JSON and capped at 1 MB. A body the parser refuses 
 Every endpoint that lists posts returns a bounded page: 10 posts by default and at most 50 per request through `limit`. Each response carries an opaque `nextCursor`; send it back as `cursor` to read the next page, and treat `null` as the end of the list. Lists are keyset-paginated over their ordering key plus `_id` (`publishedAt` descending for public feeds, `createdAt` descending for the dashboard), so paging does not slow down with depth and ties keep a stable order. The queries also project only card fields, so a page never reads stored Markdown bodies; post bodies are loaded by the detail endpoints only.
 
 To run the API locally, configure its environment and start MongoDB as described in the [development setup](../../SETUP.md), then run `pnpm --filter api dev` from the repository root.
+
+## Testing
+
+The suite is [Vitest](https://vitest.dev). It lives in `apps/api`, and every test file sits next to the source it covers (`src/services/post.test.ts` for `src/services/post.ts`).
+
+```bash
+pnpm test                                  # once
+pnpm test:watch                            # re-runs on change
+pnpm --filter api test:coverage            # with a coverage report
+```
+
+Nothing has to be set up first. `pnpm test` needs no `pnpm --filter api db:up`, no Docker, and no `apps/api/.env` — `src/test/global-setup.ts` starts one **in-memory MongoDB replica set** for the whole run and stops it afterwards, and `src/test/setup.ts` connects Mongoose, builds the unique indexes before the first test, and empties the collections between tests. A replica set rather than a plain in-memory server because post and tag writes run in transactions, which MongoDB only allows on a replica set member.
+
+The only requirement is network access on the first run: `pnpm install` downloads a `mongod` binary. It is cached from then on.
+
+Write tests through the helpers in `src/test/`:
+
+| Helper                                      | What it gives you                                                                             |
+| ------------------------------------------- | --------------------------------------------------------------------------------------------- |
+| `api()`                                     | the whole app from `App()`, for one request — no port bound                                   |
+| `registeredSession()` / `loggedInSession()` | a `supertest` agent that keeps its session cookie, plus the raw token for a deliberate replay |
+| `trustedOrigin()`                           | the `Origin` value every state-changing request needs                                         |
+| `createUser` / `createPost` / `createTag`   | documents with unique emails and slugs, so a test never collides with itself                  |
+
+A test file that opens its own connection, or that stubs the session cookie, is testing something other than what ships. `pnpm validate` from the repository root runs the suite alongside lint, formatting, and type checks.
+
+There is no coverage threshold. The suite is here to pin behavior — ownership enforcement, draft isolation, the slug retry, the `401`-versus-`500` split — and a threshold set from the current measurement would only pass by accident.

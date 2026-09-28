@@ -39,11 +39,22 @@ pnpm --filter api db:down
 
 Other useful commands:
 
-| Command                     | What it does                            |
-| --------------------------- | --------------------------------------- |
-| `pnpm build`                | Builds the workspace applications.      |
-| `pnpm validate`             | Runs lint, formatting, and type checks. |
-| `pnpm --filter api db:logs` | Follows the local MongoDB logs.         |
+| Command                     | What it does                                                |
+| --------------------------- | ----------------------------------------------------------- |
+| `pnpm build`                | Builds the workspace applications.                          |
+| `pnpm test`                 | Runs the API test suite.                                    |
+| `pnpm validate`             | Runs lint, formatting, type checks, and the API test suite. |
+| `pnpm --filter api db:logs` | Follows the local MongoDB logs.                             |
+
+## Run the tests
+
+The API test suite needs none of the above. `pnpm test` starts its own in-memory MongoDB replica set, so it runs without Docker, without `pnpm --filter api db:up`, and without an `apps/api/.env`:
+
+```bash
+pnpm test
+```
+
+One thing to know about a fresh clone: `pnpm install` downloads a `mongod` binary for [mongodb-memory-server](https://github.com/typegoose/mongodb-memory-server), around 80 MB. That is the only step that needs network access, and a failure to fetch it is the most common reason a new clone cannot run the tests. The binary is cached, so later runs are offline. Behind a proxy, set `MONGOMS_DOWNLOAD_MIRROR` to a mirror you can reach.
 
 ## Deployment plan
 
