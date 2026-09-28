@@ -412,23 +412,28 @@ describe('PUT /api/posts/:id', () => {
     expect(unpublished.body.post.publishedAt).toBeNull()
   })
 
+  // The post belongs to the signed-in agent, so a `403` can only be the origin
+  // guard: another author's post would be refused by ownership either way.
   it('answers 401 without a session and 403 without a trusted origin', async () => {
-    const post = await createPost(await createUser())
+    const session = await author()
+    const post = await createPost(authorRef(session), { title: 'Untouched' })
 
     const anonymous = await api()
       .put(`/api/posts/${post.id}`)
       .set('Origin', ORIGIN)
       .send({ title: 'New' })
-    const session = await author()
     const foreign = await write(
       session,
       'put',
       `/api/posts/${post.id}`,
       FOREIGN_ORIGIN,
-    ).send({ title: 'New' })
+    ).send({ title: 'Hijacked' })
 
     expect(anonymous.status).toBe(401)
     expect(foreign.status).toBe(403)
+    expect(foreign.body).toEqual({ error: 'Forbidden' })
+    const stored = await Post.findById(post.id).lean()
+    expect(stored?.title).toBe('Untouched')
   })
 })
 
@@ -469,13 +474,15 @@ describe('DELETE /api/posts/:id', () => {
     expect(malformed.status).toBe(400)
   })
 
+  // The post belongs to the signed-in agent, so a `403` can only be the origin
+  // guard: another author's post would be refused by ownership either way.
   it('answers 401 without a session and 403 without a trusted origin', async () => {
-    const post = await createPost(await createUser())
+    const session = await author()
+    const post = await createPost(authorRef(session))
 
     const anonymous = await api()
       .delete(`/api/posts/${post.id}`)
       .set('Origin', ORIGIN)
-    const session = await author()
     const foreign = await write(
       session,
       'delete',
@@ -485,6 +492,8 @@ describe('DELETE /api/posts/:id', () => {
 
     expect(anonymous.status).toBe(401)
     expect(foreign.status).toBe(403)
+    expect(foreign.body).toEqual({ error: 'Forbidden' })
+    await expect(Post.findById(post.id)).resolves.not.toBeNull()
   })
 })
 
