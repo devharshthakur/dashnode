@@ -65,10 +65,14 @@ describe('GET /api/users/:id', () => {
     expect(response.text).not.toContain('private@example.com')
   })
 
-  it('never lists a draft on a public profile', async () => {
+  // Two exclusions in one case, and each needs its own fixture: a profile that
+  // stopped filtering by author, and one that stopped filtering by status.
+  it('never lists a draft or another author’s post on a public profile', async () => {
     const user = await createUser()
+    const other = await createUser()
     const published = await createPost(user, { status: 'published' })
     await createPost(user, { status: 'draft' })
+    await createPost(other, { status: 'published' })
 
     const response = await api().get(`/api/users/${user.id}`)
 
@@ -152,6 +156,7 @@ describe('PUT /api/users/me', () => {
       avatarUrl: 'https://cdn.example.com/original.png',
     })
     const stored = await User.findById(signedIn.user.id).lean()
+    expect(stored?.bio).toBe('New bio')
     expect(stored?.name).toBe('Ada Lovelace')
     expect(stored?.avatarUrl).toBe('https://cdn.example.com/original.png')
   })
@@ -189,6 +194,8 @@ describe('PUT /api/users/me', () => {
 
     expect(response.status).toBe(200)
     expect(response.body.user.avatarUrl).toBe('')
+    const stored = await User.findById(signedIn.user.id).lean()
+    expect(stored?.avatarUrl).toBe('')
   })
 
   it('never includes a password in the response', async () => {
