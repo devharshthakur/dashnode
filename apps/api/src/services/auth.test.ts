@@ -78,13 +78,17 @@ describe('registerUser', () => {
     ).rejects.toBeInstanceOf(EmailTakenError)
   })
 
-  it('collides with a document stored through the model in another casing', async () => {
-    await User.create({
+  // The model lowercases the address on its way in, so this documents where the
+  // normalization happens: writing through `User.create` is not a way to store a
+  // mixed-case address and watch the index collide.
+  it('stores an address written through the model in lowercase', async () => {
+    const created = await User.create({
       name: 'Written Directly',
       email: 'Mixed.Case@Example.com',
       password: await bcrypt.hash('some-hash', 10),
     })
 
+    expect(created.email).toBe('mixed.case@example.com')
     await expect(
       registerUser({ ...REGISTRATION, email: 'mixed.case@example.com' }),
     ).rejects.toBeInstanceOf(EmailTakenError)
