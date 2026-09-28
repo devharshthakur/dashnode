@@ -4,6 +4,7 @@ import { Types } from 'mongoose'
 
 import { PASSWORD_MAX_BYTES } from '#config/constants'
 import { env } from '#env'
+import { RevokedToken } from '#models/revoked-token'
 import {
   api,
   loggedInSession,
@@ -318,18 +319,26 @@ describe('POST /api/auth/logout', () => {
     expect(unverifiable.status).toBe(200)
   })
 
+  // The first logout clears the agent's cookie, so the second request is sent
+  // with the raw cookie header: replaying it is what actually revokes the same
+  // token twice, where a second request on the agent would carry no cookie and
+  // take the branch the case above already covers.
   it('is harmless when the same session logs out twice', async () => {
     const session = await registeredSession({ email: 'twice@example.com' })
 
     const first = await session.agent
       .post('/api/auth/logout')
       .set('Origin', ORIGIN)
-    const second = await session.agent
+    const second = await api()
       .post('/api/auth/logout')
       .set('Origin', ORIGIN)
+      .set('Cookie', session.cookie)
 
     expect(first.status).toBe(200)
     expect(second.status).toBe(200)
+    expect(second.body).toEqual({ message: 'Logged out' })
+    // One record, not two: the upsert is what makes the repeat a no-op.
+    await expect(RevokedToken.countDocuments({})).resolves.toBe(1)
   })
 
   it('leaves the user’s other session alone', async () => {
