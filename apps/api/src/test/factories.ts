@@ -81,6 +81,13 @@ export interface PostOverrides {
   status?: PostStatus
   /** `undefined` stamps a fresh date for a published post and `null` for a draft. */
   publishedAt?: Date | null
+  /**
+   * `undefined` stamps a fresh date. Mongoose only writes `createdAt` itself
+   * while the field is unset, so a test that has to disagree with the order the
+   * documents were stored in pins it here rather than updating it afterwards:
+   * `createdAt` is immutable and an update would be dropped.
+   */
+  createdAt?: Date
   tags?: string[]
 }
 
@@ -105,6 +112,9 @@ export async function createPost(
     coverImage: overrides.coverImage ?? '',
     status,
     publishedAt,
+    ...(overrides.createdAt === undefined
+      ? {}
+      : { createdAt: overrides.createdAt }),
     // The `author` column is a reference, so a document has to be reduced to
     // its id first.
     author: author instanceof Types.ObjectId ? author : author._id,
