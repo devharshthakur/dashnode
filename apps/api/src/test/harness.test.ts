@@ -1,92 +1,15 @@
 import { describe, expect, it } from 'vitest'
-import type { Types } from 'mongoose'
 
 import { Post } from '#models/post'
 import { Tag } from '#models/tag'
 import { User } from '#models/user'
-import { createPost, createUser } from '#test/factories'
-import { withTransaction } from '#utils/transaction'
+import { createUser } from '#test/factories'
 
-// Proves the harness itself: a real connection, real indexes, and a replica set
-// that accepts transactions. Everything from here on depends on this file
-// passing before the rest of the suite can mean anything.
+// Proves the harness builds the unique indexes before the first test: a
+// duplicate has to be rejected every run, so a write that relies on an index
+// cannot pass or fail depending on timing. Transactions, population, and
+// commit/rollback are exercised by the service integration tests instead.
 describe('test harness', () => {
-  it('reads a post back with a populated author and tags', async () => {
-    const user = await createUser({ name: 'Ada Lovelace' })
-    const post = await createPost(user, { tags: ['express', 'node'] })
-
-    const found = await Post.findById(post._id)
-      .populate<{ author: { _id: Types.ObjectId; name: string } }>(
-        'author',
-        'name',
-      )
-      .populate<{
-        tags: { _id: Types.ObjectId; name: string; slug: string }[]
-      }>('tags', 'name slug')
-      .lean()
-
-    expect(found?.title).toBe(post.title)
-    expect(found?.author.name).toBe('Ada Lovelace')
-    expect(found?.tags.map((tag) => tag.name).sort()).toEqual([
-      'express',
-      'node',
-    ])
-  })
-
-  // The reason the harness asks for a replica set rather than a plain
-  // in-memory server: post and tag writes run inside `withTransaction`.
-  it('commits every document a transaction writes', async () => {
-    const { user, tag } = await withTransaction(async (session) => {
-      const [user] = await User.create(
-        [
-          {
-            name: 'In A Transaction',
-            email: 'tx@example.com',
-            password: 'hash',
-          },
-        ],
-        { session },
-      )
-      const [tag] = await Tag.create(
-        [{ name: 'transactional', slug: 'transactional' }],
-        { session },
-      )
-
-      return { user, tag }
-    })
-
-    expect(await User.exists({ _id: user._id })).not.toBeNull()
-    expect(await Tag.exists({ _id: tag._id })).not.toBeNull()
-  })
-
-  // The half of a transaction that matters: a failure part way through has to
-  // undo the writes that already succeeded, which is the property the post
-  // service relies on when its post write fails after its tags were created.
-  it('rolls back every document when a transaction fails', async () => {
-    await expect(
-      withTransaction(async (session) => {
-        await User.create(
-          [
-            {
-              name: 'Rolled Back',
-              email: 'rollback@example.com',
-              password: 'hash',
-            },
-          ],
-          { session },
-        )
-
-        throw new Error('the second write failed')
-      }),
-    ).rejects.toThrow('the second write failed')
-
-    await expect(User.exists({ email: 'rollback@example.com' })).resolves.toBe(
-      null,
-    )
-  })
-
-  // The reason indexes are synced before the first test rather than built in
-  // the background: a duplicate email has to be rejected every run.
   it('rejects a duplicate email through its unique index', async () => {
     await User.create({
       name: 'First',

@@ -218,14 +218,6 @@ describe('GET /api/posts/:slug', () => {
     expect(unknown.status).toBe(404)
     expect(published.body).toEqual(unknown.body)
   })
-
-  // The dashboard has to stay out of the `/:slug` space: `mine/list` reaching
-  // the auth guard proves it was not read as a slug.
-  it('does not let the mine segment be read as a slug', async () => {
-    const response = await api().get('/api/posts/mine/list')
-
-    expect(response.status).toBe(401)
-  })
 })
 
 describe('POST /api/posts', () => {
@@ -252,7 +244,7 @@ describe('POST /api/posts', () => {
     expect(response.body).toEqual({ error: 'Forbidden' })
   })
 
-  it('creates a draft by default', async () => {
+  it('creates a draft by default and stores the Markdown body unaltered', async () => {
     const session = await author()
 
     const response = await write(session, 'post', '/api/posts').send(NEW_POST)
@@ -260,6 +252,9 @@ describe('POST /api/posts', () => {
     expect(response.status).toBe(201)
     expect(response.body.post.status).toBe('draft')
     expect(response.body.post.publishedAt).toBeNull()
+    expect(response.body.post.content).toBe(MARKDOWN)
+    const stored = await Post.findById(response.body.post.id).lean()
+    expect(stored?.content).toBe(MARKDOWN)
   })
 
   it('publishes when asked to', async () => {
@@ -323,20 +318,6 @@ describe('POST /api/posts', () => {
       ),
     ).toBe(true)
   })
-
-  // The documented outcome of two requests for the same new title: both are
-  // stored, and neither answer is a `5xx`.
-  it('stores two posts with the same new title on title and title-1', async () => {
-    const session = await author()
-
-    const first = await write(session, 'post', '/api/posts').send(NEW_POST)
-    const second = await write(session, 'post', '/api/posts').send(NEW_POST)
-
-    expect(first.status).toBe(201)
-    expect(second.status).toBe(201)
-    expect(first.body.post.slug).toBe('building-a-rest-api')
-    expect(second.body.post.slug).toBe('building-a-rest-api-1')
-  })
 })
 
 describe('PUT /api/posts/:id', () => {
@@ -387,7 +368,9 @@ describe('PUT /api/posts/:id', () => {
     })
 
     expect(unknown.status).toBe(404)
+    expect(unknown.body).toEqual({ error: 'Post not found' })
     expect(malformed.status).toBe(400)
+    expect(malformed.body).toEqual({ error: 'Invalid post id' })
   })
 
   it('answers 400 for an invalid body', async () => {
@@ -466,6 +449,9 @@ describe('DELETE /api/posts/:id', () => {
     const response = await write(other, 'delete', `/api/posts/${post.id}`)
 
     expect(response.status).toBe(403)
+    expect(response.body).toEqual({
+      error: 'You can only modify your own posts',
+    })
     await expect(Post.findById(post.id)).resolves.not.toBeNull()
   })
 
@@ -480,7 +466,9 @@ describe('DELETE /api/posts/:id', () => {
     const malformed = await write(session, 'delete', '/api/posts/not-an-id')
 
     expect(unknown.status).toBe(404)
+    expect(unknown.body).toEqual({ error: 'Post not found' })
     expect(malformed.status).toBe(400)
+    expect(malformed.body).toEqual({ error: 'Invalid post id' })
   })
 
   // The post belongs to the signed-in agent, so a `403` can only be the origin

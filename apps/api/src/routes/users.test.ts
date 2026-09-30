@@ -53,16 +53,11 @@ describe('GET /api/users/:id', () => {
     expect(response.body.posts).toHaveLength(1)
     expect(response.body.posts[0].id).toBe(post.id)
     expect(response.body).toHaveProperty('nextCursor')
-  })
-
-  it('never carries an email or a password hash', async () => {
-    const user = await createUser({ email: 'private@example.com' })
-
-    const response = await api().get(`/api/users/${user.id}`)
-
+    // The exact equality above already excludes them, but the raw response text
+    // must not leak the address either.
     expect(response.body.user).not.toHaveProperty('email')
     expect(response.body.user).not.toHaveProperty('password')
-    expect(response.text).not.toContain('private@example.com')
+    expect(response.text).not.toContain(user.email)
   })
 
   // Two exclusions in one case, and each needs its own fixture: a profile that
@@ -170,6 +165,7 @@ describe('PUT /api/users/me', () => {
       bio: 'New bio',
       avatarUrl: 'https://cdn.example.com/original.png',
     })
+    expect(response.body.user).not.toHaveProperty('password')
     const stored = await User.findById(signedIn.user.id).lean()
     expect(stored?.bio).toBe('New bio')
     expect(stored?.name).toBe('Ada Lovelace')
@@ -211,17 +207,6 @@ describe('PUT /api/users/me', () => {
     expect(response.body.user.avatarUrl).toBe('')
     const stored = await User.findById(signedIn.user.id).lean()
     expect(stored?.avatarUrl).toBe('')
-  })
-
-  it('never includes a password in the response', async () => {
-    const signedIn = await session()
-
-    const response = await signedIn.agent
-      .put('/api/users/me')
-      .set('Origin', ORIGIN)
-      .send({ bio: 'New bio' })
-
-    expect(response.body.user).not.toHaveProperty('password')
   })
 
   // The route's own `404` is unreachable through the session: `requireAuth`

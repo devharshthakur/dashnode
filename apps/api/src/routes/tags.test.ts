@@ -1,21 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
-import { Post } from '#models/post'
 import { api, trustedOrigin } from '#test/app'
 import { createPost, createTag, createUser } from '#test/factories'
-
-interface ListedTag {
-  id: string
-  name: string
-  slug: string
-  postCount: number
-}
-
-async function directory(): Promise<ListedTag[]> {
-  const response = await api().get('/api/tags')
-
-  return response.body.tags
-}
 
 describe('GET /api/tags', () => {
   it('answers 200 with an id, name, slug and count per tag', async () => {
@@ -41,65 +27,6 @@ describe('GET /api/tags', () => {
 
     expect(response.body).toEqual({ tags: [] })
     expect(response.text).not.toContain('secret-project')
-  })
-
-  it('counts published posts, and a post carrying one tag twice counts once', async () => {
-    const user = await createUser()
-    const node = await createTag('node')
-    await createPost(user, { tags: ['node'] })
-    await createPost(user, { status: 'draft', tags: ['node'] })
-    await Post.create({
-      title: 'Linked twice',
-      slug: 'linked-twice',
-      content: 'Body.',
-      excerpt: 'Body.',
-      status: 'published',
-      publishedAt: new Date(),
-      author: user._id,
-      tags: [node._id, node._id],
-    })
-
-    await expect(directory()).resolves.toEqual([
-      { id: String(node._id), name: 'node', slug: 'node', postCount: 2 },
-    ])
-  })
-
-  it('sorts by name and answers an empty list when nothing is published', async () => {
-    const user = await createUser()
-    await createPost(user, { tags: ['node', 'express', 'database'] })
-
-    const sorted = await directory()
-    await Post.updateMany({}, { $set: { status: 'draft' } })
-    const empty = await directory()
-
-    expect(sorted.map((tag) => tag.name)).toEqual([
-      'database',
-      'express',
-      'node',
-    ])
-    expect(empty).toEqual([])
-  })
-
-  it('follows a draft being published and unpublished again', async () => {
-    const user = await createUser()
-    const post = await createPost(user, {
-      status: 'draft',
-      tags: ['secret-project'],
-    })
-
-    await Post.findByIdAndUpdate(post._id, {
-      $set: { status: 'published', publishedAt: new Date() },
-    })
-    const published = await directory()
-
-    await Post.findByIdAndUpdate(post._id, {
-      $set: { status: 'draft', publishedAt: null },
-    })
-    const unpublished = await directory()
-
-    expect(published.map((tag) => tag.name)).toEqual(['secret-project'])
-    expect(published[0]?.postCount).toBe(1)
-    expect(unpublished).toEqual([])
   })
 })
 

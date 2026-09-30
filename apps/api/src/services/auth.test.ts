@@ -22,15 +22,22 @@ const REGISTRATION = {
 }
 
 describe('registerUser', () => {
-  it('normalizes the name and the email before storing them', async () => {
+  it('stores a normalized user with the public shape', async () => {
     const user = await registerUser({
       name: '  Ada Lovelace  ',
       email: '  Ada@Example.COM  ',
       password: REGISTRATION.password,
     })
 
-    expect(user.name).toBe('Ada Lovelace')
-    expect(user.email).toBe('ada@example.com')
+    expect(user).toMatchObject({
+      name: 'Ada Lovelace',
+      email: 'ada@example.com',
+      createdAt: expect.any(Date),
+      updatedAt: expect.any(Date),
+    })
+    // Absent, not merely `undefined`: a response built from this shape must
+    // carry no key for the hash at all.
+    expect(user).not.toHaveProperty('password')
   })
 
   // bcrypt must never be handed the password itself, and the hash must still
@@ -43,21 +50,6 @@ describe('registerUser', () => {
     await expect(
       bcrypt.compare(REGISTRATION.password, stored?.password ?? ''),
     ).resolves.toBe(true)
-  })
-
-  // Absent, not merely `undefined`: a response built from this shape must carry
-  // no key for the hash at all.
-  it('returns a user with no password key', async () => {
-    const user = await registerUser(REGISTRATION)
-
-    expect(user).not.toHaveProperty('password')
-  })
-
-  it('returns the timestamps as dates', async () => {
-    const user = await registerUser(REGISTRATION)
-
-    expect(user.createdAt).toBeInstanceOf(Date)
-    expect(user.updatedAt).toBeInstanceOf(Date)
   })
 
   it('rejects a second registration for an email already taken', async () => {
@@ -105,18 +97,6 @@ describe('registerUser', () => {
 })
 
 describe('loginUser', () => {
-  it('returns the user for correct credentials, with no password key', async () => {
-    await createUser(REGISTRATION)
-
-    const user = await loginUser({
-      email: REGISTRATION.email,
-      password: TEST_PASSWORD,
-    })
-
-    expect(user.email).toBe(REGISTRATION.email)
-    expect(user).not.toHaveProperty('password')
-  })
-
   // The model hides the hash, so the lookup has to opt it back in. If it did
   // not, this success path would fail on an undefined hash — which is why the
   // success path is asserted rather than only the failures.

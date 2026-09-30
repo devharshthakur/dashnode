@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest'
 import { Types } from 'mongoose'
 
 import { decodePostCursor } from '#utils/cursor'
-import type { PostCardSource } from '#utils/post'
+import type { PostDetailSource } from '#utils/post'
 import {
   POST_CARD_FIELDS,
   postCursorFor,
@@ -58,8 +58,12 @@ function postDocument(
   } as unknown as PostDocumentArg
 }
 
-/** A lean post with populated relations, as the public read queries return it. */
-function cardSource(publishedAt: Date | null = PUBLISHED_AT): PostCardSource {
+/**
+ * A lean post with populated relations, as the public read queries return it.
+ * The card source normally excludes `content`; it is present here so the card
+ * mapper's body-exclusion assertion has a body to exclude.
+ */
+function cardSource(publishedAt: Date | null = PUBLISHED_AT): PostDetailSource {
   return {
     _id: POST_ID,
     title: 'Building a REST API',
@@ -68,6 +72,7 @@ function cardSource(publishedAt: Date | null = PUBLISHED_AT): PostCardSource {
     coverImage: 'https://cdn.example.com/cover.png',
     status: 'published',
     publishedAt,
+    content: MARKDOWN,
     author: {
       _id: AUTHOR_ID,
       name: 'Harsh Thakur',
@@ -103,14 +108,6 @@ describe('toPostDto', () => {
       createdAt: CREATED_AT.toISOString(),
       updatedAt: UPDATED_AT.toISOString(),
     })
-  })
-
-  it('names the document id `id` and leaves the version key off', () => {
-    const dto = toPostDto(postDocument())
-
-    expect(dto.id).toBe(POST_ID.toString())
-    expect(dto).not.toHaveProperty('_id')
-    expect(dto).not.toHaveProperty('__v')
   })
 
   it('reports a draft as unpublished rather than as an invalid date', () => {

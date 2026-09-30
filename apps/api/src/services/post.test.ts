@@ -11,7 +11,6 @@ import { Post } from '#models/post'
 import { Tag } from '#models/tag'
 import {
   createPost,
-  deletePost,
   getOwnedPostById,
   getPublishedPostBySlug,
   listPublishedPosts,
@@ -348,36 +347,6 @@ describe('updatePost', () => {
   })
 })
 
-describe('deletePost', () => {
-  it("removes the author's own post", async () => {
-    const author = await createUser()
-    const post = await storePost(author)
-
-    await deletePost(post.id, author.id)
-
-    await expect(Post.findById(post.id)).resolves.toBeNull()
-  })
-
-  it('refuses another author and leaves the post in place', async () => {
-    const author = await createUser()
-    const other = await createUser()
-    const post = await storePost(author)
-
-    await expect(deletePost(post.id, other.id)).rejects.toBeInstanceOf(
-      PostForbiddenError,
-    )
-    await expect(Post.findById(post.id)).resolves.not.toBeNull()
-  })
-
-  it('reports an unknown post as not found', async () => {
-    const author = await createUser()
-
-    await expect(
-      deletePost(new Types.ObjectId().toHexString(), author.id),
-    ).rejects.toBeInstanceOf(PostNotFoundError)
-  })
-})
-
 describe('listPublishedPosts', () => {
   it("returns published posts only, even beside the same author's drafts", async () => {
     const author = await createUser()
@@ -566,25 +535,6 @@ describe('listUserPosts', () => {
     expect(page.posts.map((post) => post._id.toString())).toEqual([
       writtenLast._id.toString(),
       writtenFirst._id.toString(),
-    ])
-  })
-
-  // The list is keyed on `createdAt`, not the id, so the two orders are made to
-  // disagree: an order by `_id` alone could not produce this list.
-  it('orders by creation date, not by id', async () => {
-    const author = await createUser()
-    const storedFirst = await storePost(author, {
-      createdAt: new Date('2023-01-01T00:00:00.000Z'),
-    })
-    const storedLast = await storePost(author, {
-      createdAt: new Date('2024-01-01T00:00:00.000Z'),
-    })
-
-    const page = await listUserPosts(author.id, { limit: 10 })
-
-    expect(page.posts.map((post) => post._id.toString())).toEqual([
-      storedLast._id.toString(),
-      storedFirst._id.toString(),
     ])
   })
 

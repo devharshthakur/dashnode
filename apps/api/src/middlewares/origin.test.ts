@@ -1,100 +1,118 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
+import type { NextFunction, Request, Response } from 'express'
 
-import { api, registeredSession, trustedOrigin } from '#test/app'
+import { corsOrigins } from '#config/cors'
+import { requireTrustedOrigin } from '#middlewares/origin'
 
-// Every route that writes on behalf of the signed-in user mounts the guard.
-// `POST /api/posts` is the one used here, and it mounts `requireTrustedOrigin`
-// before `requireAuth`, so a `403` means the guard answered.
-const WRITE = '/api/posts'
 const FORBIDDEN = { error: 'Forbidden' }
-const NEW_POST = {
-  title: 'Origin check',
-  content: 'A body.',
-  tags: ['node'],
-}
 
-let email = 0
+function trusted(): string {
+  const [origin] = corsOrigins
 
-/** A signed-in write carrying exactly the headers it was given. */
-async function write(headers: Record<string, string> = {}) {
-  email += 1
-  const session = await registeredSession({ email: `origin-${email}@x.com` })
-  const request = session.agent.post(WRITE).send(NEW_POST)
-
-  for (const [name, value] of Object.entries(headers)) {
-    request.set(name, value)
+  if (origin === undefined) {
+    throw new Error('CORS_ORIGIN lists no origin to trust')
   }
 
-  return request
+  return origin
 }
 
-describe('requireTrustedOrigin', () => {
-  it('lets a request from a trusted origin through', async () => {
-    const response = await write({ Origin: trustedOrigin() })
+/** Drives the middleware with the given headers, without an HTTP layer. */
+function drive(headers: Record<string, string | undefined>) {
+  const answered: { status: number; body: unknown } = {
+    status: 0,
+    body: undefined,
+  }
+  const next = vi.fn()
+  const res = {
+    status(code: number) {
+      answered.status = code
 
-    expect(response.status).toBe(201)
+      return res
+    },
+    json(body: unknown) {
+      answered.body = body
+
+      return res
+    },
+  } as unknown as Response
+  const req = {
+    get: (name: string) => headers[name.toLowerCase()],
+    log: { warn: vi.fn(), debug: vi.fn(), error: vi.fn() },
+  } as unknown as Request
+
+  requireTrustedOrigin(req, res, next as unknown as NextFunction)
+
+  return { answered, next }
+}
+
+// Every route that writes on behalf of the signed-in user mounts this guard; the
+// guard's own policy is tested here directly, and the route suites check that
+// each write endpoint actually wires it in.
+describe('requireTrustedOrigin', () => {
+  it('lets a request from a trusted origin through', () => {
+    const { answered, next } = drive({ origin: trusted() })
+
+    expect(next).toHaveBeenCalled()
+    expect(answered.status).toBe(0)
   })
 
-  it('refuses a request from a foreign origin', async () => {
-    const response = await write({ Origin: 'https://evil.example.com' })
+  it('refuses a request from a foreign origin', () => {
+    const { answered, next } = drive({ origin: 'https://evil.example.com' })
 
-    expect(response.status).toBe(403)
-    expect(response.body).toEqual(FORBIDDEN)
+    expect(next).not.toHaveBeenCalled()
+    expect(answered).toEqual({ status: 403, body: FORBIDDEN })
   })
 
   // Sandboxed frames and local files send the opaque value, and no legitimate
   // page in this app has it.
-  it('refuses the opaque origin', async () => {
-    const response = await write({ Origin: 'null' })
+  it('refuses the opaque origin', () => {
+    const { answered, next } = drive({ origin: 'null' })
 
-    expect(response.status).toBe(403)
+    expect(next).not.toHaveBeenCalled()
+    expect(answered).toEqual({ status: 403, body: FORBIDDEN })
   })
 
   // Browsers always send `Origin` on POST, PUT and DELETE, so its absence means
   // a non-browser client holding a browser-only cookie.
-  it('refuses a request that declares no origin at all', async () => {
-    const response = await write()
+  it('refuses a request that declares no origin at all', () => {
+    const { answered, next } = drive({})
 
-    expect(response.status).toBe(403)
-    expect(response.body).toEqual(FORBIDDEN)
+    expect(next).not.toHaveBeenCalled()
+    expect(answered).toEqual({ status: 403, body: FORBIDDEN })
   })
 
-  it('accepts a trusted referer when no origin is sent', async () => {
-    const response = await write({ Referer: `${trustedOrigin()}/write` })
+  it('accepts a trusted referer when no origin is sent', () => {
+    const { answered, next } = drive({ referer: `${trusted()}/write` })
 
-    expect(response.status).toBe(201)
+    expect(next).toHaveBeenCalled()
+    expect(answered.status).toBe(0)
   })
 
-  it('refuses an unparsable referer', async () => {
-    const response = await write({ Referer: 'not a url' })
+  it('refuses an unparsable referer', () => {
+    const { answered, next } = drive({ referer: 'not a url' })
 
-    expect(response.status).toBe(403)
+    expect(next).not.toHaveBeenCalled()
+    expect(answered).toEqual({ status: 403, body: FORBIDDEN })
   })
 
   // `Origin` is authoritative; a `Referer` cannot rescue a foreign one.
-  it('lets a trusted origin win over a foreign referer', async () => {
-    const response = await write({
-      Origin: trustedOrigin(),
-      Referer: 'https://evil.example.com/page',
+  it('lets a trusted origin win over a foreign referer', () => {
+    const { answered, next } = drive({
+      origin: trusted(),
+      referer: 'https://evil.example.com/page',
     })
 
-    expect(response.status).toBe(201)
+    expect(next).toHaveBeenCalled()
+    expect(answered.status).toBe(0)
   })
 
-  it('refuses a foreign origin even with a trusted referer', async () => {
-    const response = await write({
-      Origin: 'https://evil.example.com',
-      Referer: `${trustedOrigin()}/write`,
+  it('refuses a foreign origin even with a trusted referer', () => {
+    const { answered, next } = drive({
+      origin: 'https://evil.example.com',
+      referer: `${trusted()}/write`,
     })
 
-    expect(response.status).toBe(403)
-  })
-})
-
-describe('read-only routes', () => {
-  it('answer without an origin header', async () => {
-    const response = await api().get(WRITE)
-
-    expect(response.status).toBe(200)
+    expect(next).not.toHaveBeenCalled()
+    expect(answered).toEqual({ status: 403, body: FORBIDDEN })
   })
 })
