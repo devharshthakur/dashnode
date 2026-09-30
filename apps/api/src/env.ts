@@ -5,10 +5,10 @@ import { z } from 'zod'
 
 import { envSchema } from '#schemas/env'
 
-// The runner chooses the environment, never the file: Vitest sets
-// `NODE_ENV=test`, and `preview` sets `NODE_ENV=production`. `NODE_ENV` is
-// therefore never read from a file, because deciding which file to load is what
-// depends on it.
+// The runner chooses the environment, never the file: Vitest defaults
+// `NODE_ENV` to `test` only when it is unset, and `preview` sets
+// `NODE_ENV=production`. `NODE_ENV` is therefore never read from a file,
+// because deciding which file to load is what depends on it.
 const envFileByName: Record<string, string | undefined> = {
   test: '.env.test',
   development: '.env',
