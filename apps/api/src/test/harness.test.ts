@@ -1,9 +1,12 @@
+import { readdirSync } from 'node:fs'
+import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
 import { Post } from '#models/post'
 import { Tag } from '#models/tag'
 import { User } from '#models/user'
 import { createUser } from '#test/factories'
+import { DATABASE_TEST_FILES, PURE_TEST_FILES } from '#test/projects'
 
 // Proves the harness builds the unique indexes before the first test: a
 // duplicate has to be rejected every run, so a write that relies on an index
@@ -63,5 +66,23 @@ describe('test harness', () => {
     await expect(
       Tag.create({ name: 'other', slug: 'shared' }),
     ).rejects.toMatchObject({ code: 11000 })
+  })
+})
+
+describe('test project classification', () => {
+  // A test file that matches neither project's `include` would silently stop
+  // running, so the projects are held to the files that actually exist.
+  it('assigns every test file to exactly one project', () => {
+    const discovered = readdirSync(join(import.meta.dirname, '..'), {
+      recursive: true,
+    })
+      .map(String)
+      .filter((path) => path.endsWith('.test.ts'))
+      .map((path) => `src/${path.replaceAll('\\', '/')}`)
+      .sort()
+
+    expect(discovered).toEqual(
+      [...PURE_TEST_FILES, ...DATABASE_TEST_FILES].sort(),
+    )
   })
 })
