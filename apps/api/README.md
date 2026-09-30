@@ -70,6 +70,8 @@ pnpm --filter api test:coverage            # with a coverage report
 
 Nothing has to be set up first. `pnpm test` needs no `pnpm --filter api db:up`, no Docker, and no `apps/api/.env` — `src/test/global-setup.ts` starts one **in-memory MongoDB replica set** for the whole run and stops it afterwards, and `src/test/setup.ts` connects Mongoose, builds the unique indexes before the first test, and empties the collections between tests. A replica set rather than a plain in-memory server because post and tag writes run in transactions, which MongoDB only allows on a replica set member.
 
+The suite reads a committed `apps/api/.env.test`, which supplies a throwaway signing secret and keeps `pino` out of the test report. Before any test file runs, `src/test/env-setup.ts` loads that file and validates it with the same Zod schema the server uses, so a missing file or a value the schema rejects stops the run with nothing executed. A variable exported by the shell or CI keeps its value: the file only fills in what is unset.
+
 The only requirement is network access on the first run: `pnpm install` downloads a `mongod` binary. It is cached from then on.
 
 Write tests through the helpers in `src/test/`:
