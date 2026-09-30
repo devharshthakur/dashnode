@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { Types } from 'mongoose'
 
 import { createPostBodySchema, postPageQuerySchema } from '#schemas/post'
 import { listPostsQuerySchema, updatePostBodySchema } from '#schemas/post'
@@ -168,7 +169,7 @@ describe('postPageQuerySchema', () => {
 
     expect(postPageQuerySchema.parse({ cursor }).cursor).toEqual({
       at,
-      id: expect.anything(),
+      id: new Types.ObjectId(id),
     })
   })
 

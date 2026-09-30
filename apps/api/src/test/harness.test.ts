@@ -120,15 +120,25 @@ describe('test harness', () => {
     await expect(Post.create(post)).rejects.toMatchObject({ code: 11000 })
   })
 
-  it('rejects a duplicate tag name and slug through their unique indexes', async () => {
-    const tag = { name: 'reused', slug: 'reused' }
-
-    await expect(Tag.create(tag)).resolves.toBeTruthy()
-    await expect(Tag.create(tag)).rejects.toMatchObject({ code: 11000 })
-    // A second tag that folds to the same slug under a different name has to be
-    // rejected too, which is what `generateUniqueSlug` reads before it writes.
+  // The two indexes are distinct, and each stops a different write: duplicating
+  // both fields at once could only prove that *some* unique index rejected it.
+  it('rejects a duplicate tag name through the name index', async () => {
     await expect(
-      Tag.create({ name: 'reused again', slug: 'reused' }),
+      Tag.create({ name: 'reused', slug: 'first' }),
+    ).resolves.toBeTruthy()
+
+    await expect(
+      Tag.create({ name: 'reused', slug: 'second' }),
+    ).rejects.toMatchObject({ code: 11000 })
+  })
+
+  it('rejects a duplicate tag slug through the slug index', async () => {
+    await expect(
+      Tag.create({ name: 'reused', slug: 'shared' }),
+    ).resolves.toBeTruthy()
+
+    await expect(
+      Tag.create({ name: 'other', slug: 'shared' }),
     ).rejects.toMatchObject({ code: 11000 })
   })
 })

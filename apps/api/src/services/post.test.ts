@@ -298,6 +298,39 @@ describe('updatePost', () => {
     await expect(Tag.countDocuments({})).resolves.toBe(2)
   })
 
+  // Creation rollback is covered above; this is the update path. Tags are
+  // resolved before the post is saved, so a failed save must roll back the new
+  // tag and leave the post untouched.
+  it('rolls back a newly created tag when the final save fails', async () => {
+    const author = await createUser()
+    const post = await storePost(author, {
+      title: 'Before',
+      content: 'Before body.',
+      excerpt: 'Before excerpt',
+      tags: ['existing'],
+    })
+    const existingTagIds = post.tags.map((id) => String(id))
+
+    // An over-long excerpt makes the final `post.save` fail validation after the
+    // new tag has already been created inside the transaction.
+    await expect(
+      updatePost(post.id, author.id, {
+        excerpt: 'x'.repeat(251),
+        tags: ['brand-new'],
+      }),
+    ).rejects.toThrow()
+
+    const stored = await Post.findById(post.id).lean()
+
+    expect(stored?.title).toBe('Before')
+    expect(stored?.content).toBe('Before body.')
+    expect(stored?.excerpt).toBe('Before excerpt')
+    expect(stored?.tags.map(String)).toEqual(existingTagIds)
+
+    await expect(Tag.exists({ name: 'existing' })).resolves.not.toBeNull()
+    await expect(Tag.exists({ name: 'brand-new' })).resolves.toBeNull()
+  })
+
   it('answers the three ownership failures separately', async () => {
     const author = await createUser()
     const other = await createUser()
@@ -623,14 +656,21 @@ describe('detail reads', () => {
     )
   })
 
-  it("returns an owned post with its body, and nobody else's", async () => {
+  // A draft is exactly the private case the detail read exists for: published
+  // posts are already public, so only a draft's body needs the ownership check.
+  it("returns an owned draft with its body, and nobody else's", async () => {
     const author = await createUser()
     const other = await createUser()
-    const post = await storePost(author, { content: 'Private body.' })
-
-    await expect(getOwnedPostById(post.id, author.id)).resolves.toMatchObject({
+    const post = await storePost(author, {
+      status: 'draft',
       content: 'Private body.',
     })
+
+    const owned = await getOwnedPostById(post.id, author.id)
+
+    expect(String(owned._id)).toBe(post.id)
+    expect(owned.status).toBe('draft')
+    expect(owned.content).toBe('Private body.')
     await expect(getOwnedPostById('nope', author.id)).rejects.toBeInstanceOf(
       InvalidPostIdError,
     )

@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest'
 import { decodeJwt, SignJWT } from 'jose'
-import { Types } from 'mongoose'
 
 import { PASSWORD_MAX_BYTES } from '#config/constants'
 import { env } from '#env'
@@ -242,9 +241,12 @@ describe('GET /api/auth/me', () => {
   })
 
   it('answers 401 with an expired cookie', async () => {
+    // A real user and an otherwise valid token, so the expiry is the one and
+    // only reason to refuse it.
+    const user = await createUser()
     const expired = await new SignJWT()
       .setProtectedHeader({ alg: 'HS256' })
-      .setSubject(new Types.ObjectId().toHexString())
+      .setSubject(user.id)
       .setJti('expired')
       .setExpirationTime('-10s')
       .sign(new TextEncoder().encode(env.JWT_SECRET))

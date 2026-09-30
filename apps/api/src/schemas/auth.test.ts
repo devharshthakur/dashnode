@@ -59,30 +59,28 @@ describe('registerBodySchema', () => {
   })
 
   // The #24 rule, and the assertion that a schema measuring characters instead
-  // of bytes cannot pass: every other case in this file is under the limit in
-  // both units, so only a multibyte password at the boundary separates them.
-  it('accepts a password of exactly 72 UTF-8 bytes', () => {
-    const password = 'é'.repeat(PASSWORD_MAX_BYTES / 2)
+  // of bytes cannot pass: `Buffer.byteLength` proves each fixture sits exactly
+  // on the ceiling or one byte past it, in both a one-byte and a multibyte
+  // encoding.
+  it.each([
+    ['an ASCII', 'a'.repeat(72)],
+    ['a multibyte', 'é'.repeat(PASSWORD_MAX_BYTES / 2)],
+  ])('accepts %s password of exactly 72 UTF-8 bytes', (_case, password) => {
+    expect(Buffer.byteLength(password)).toBe(72)
 
     expect(
       registerBodySchema.parse({ ...VALID_REGISTRATION, password }).password,
     ).toBe(password)
   })
 
-  it('rejects a multibyte password one byte over the ceiling', () => {
-    const password = 'é'.repeat(PASSWORD_MAX_BYTES / 2 + 1)
+  it.each([
+    ['an ASCII', 'a'.repeat(73)],
+    ['a multibyte', `${'é'.repeat(PASSWORD_MAX_BYTES / 2)}a`],
+  ])('rejects %s password one byte over the ceiling', (_case, password) => {
+    expect(Buffer.byteLength(password)).toBe(73)
 
     expect(() =>
       registerBodySchema.parse({ ...VALID_REGISTRATION, password }),
-    ).toThrow(/72 bytes/)
-  })
-
-  it('rejects a 100-character password that is only 100 bytes', () => {
-    expect(() =>
-      registerBodySchema.parse({
-        ...VALID_REGISTRATION,
-        password: 'a'.repeat(100),
-      }),
     ).toThrow(/72 bytes/)
   })
 })
@@ -104,11 +102,11 @@ describe('loginBodySchema', () => {
   })
 
   it('applies the same byte ceiling as registration', () => {
-    expect(() =>
-      loginBodySchema.parse({
-        ...VALID_LOGIN,
-        password: 'é'.repeat(PASSWORD_MAX_BYTES / 2 + 1),
-      }),
-    ).toThrow(/72 bytes/)
+    const password = `${'é'.repeat(PASSWORD_MAX_BYTES / 2)}a`
+
+    expect(Buffer.byteLength(password)).toBe(73)
+    expect(() => loginBodySchema.parse({ ...VALID_LOGIN, password })).toThrow(
+      /72 bytes/,
+    )
   })
 })

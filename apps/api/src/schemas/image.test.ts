@@ -33,9 +33,14 @@ describe('imageUrlSchema', () => {
     expect(imageUrlSchema.safeParse(url).success).toBe(false)
   })
 
-  it('rejects a URL longer than 2048 characters', () => {
-    const url = `https://cdn.example.com/${'a'.repeat(2048)}`
+  // The boundary is 2048 total characters: exactly that is accepted, one more
+  // is rejected. Each fixture asserts its own length so a change to the prefix
+  // cannot drift the test off the boundary.
+  it('rejects a URL of exactly 2049 characters', () => {
+    const prefix = 'https://cdn.example.com/'
+    const url = prefix + 'a'.repeat(2049 - prefix.length)
 
+    expect(url).toHaveLength(2049)
     expect(imageUrlSchema.safeParse(url).success).toBe(false)
   })
 
