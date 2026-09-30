@@ -1,5 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
+import mongoose from 'mongoose'
+
 import { envSchema } from '#schemas/env'
 import {
   applyTestEnv,
@@ -151,5 +153,14 @@ describe('setup', () => {
 
     expect(() => setup()).toThrow(/LOG_LEVEL/)
     expect(process.env.JWT_SECRET).toBeUndefined()
+  })
+})
+
+describe('the pure project', () => {
+  // This file runs in the pure Vitest project, which has no replica set or
+  // connection; importing mongoose is harmless, but connecting would prove the
+  // database setup leaked into a project that must not have one.
+  it('runs without a database connection', () => {
+    expect(mongoose.connection.readyState).toBe(0)
   })
 })
