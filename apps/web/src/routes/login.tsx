@@ -1,20 +1,19 @@
+import { useForm } from '@tanstack/react-form'
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
-import { useState } from 'react'
-import type { FormEvent } from 'react'
+import { FeatherIcon } from 'lucide-react'
 
 import { Alert, AlertDescription } from '#/components/ui/alert'
 import { Button } from '#/components/ui/button'
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from '#/components/ui/card'
-import { Field, FieldGroup, FieldLabel } from '#/components/ui/field'
+  Field,
+  FieldDescription,
+  FieldError,
+  FieldGroup,
+  FieldLabel,
+} from '#/components/ui/field'
 import { Input } from '#/components/ui/input'
 import { Spinner } from '#/components/ui/spinner'
+import { loginSchema } from '#/lib/auth-schemas'
 import { useLogin } from '#/lib/session'
 
 export const Route = createFileRoute('/login')({
@@ -25,82 +24,122 @@ export const Route = createFileRoute('/login')({
 function LoginPage() {
   const navigate = useNavigate()
   const login = useLogin()
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault()
-
-    login.mutate(
-      { email, password },
-      { onSuccess: () => void navigate({ to: '/dashboard' }) },
-    )
-  }
+  const form = useForm({
+    defaultValues: { email: '', password: '' },
+    validators: { onSubmit: loginSchema },
+    onSubmit: async ({ value }) => {
+      try {
+        await login.mutateAsync(value)
+        await navigate({ to: '/dashboard' })
+      } catch {
+        // TanStack Query keeps the failure on `login.error`, which the alert
+        // below renders; swallowing it here keeps the rejection from escaping
+        // `handleSubmit`.
+      }
+    },
+  })
 
   return (
-    <main className="mx-auto flex w-full max-w-6xl flex-1 items-center justify-center px-4 py-16">
-      <Card className="w-full max-w-md">
-        <CardHeader>
-          <CardTitle>Welcome back</CardTitle>
-          <CardDescription>
-            Log in to keep writing and publishing on DashNode.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit}>
-            <FieldGroup>
-              <Field>
-                <FieldLabel htmlFor="email">Email</FieldLabel>
-                <Input
-                  id="email"
-                  name="email"
-                  type="email"
-                  autoComplete="email"
-                  required
-                  value={email}
-                  onChange={(event) => setEmail(event.target.value)}
-                />
-              </Field>
-              <Field>
-                <FieldLabel htmlFor="password">Password</FieldLabel>
-                <Input
-                  id="password"
-                  name="password"
-                  type="password"
-                  autoComplete="current-password"
-                  required
-                  value={password}
-                  onChange={(event) => setPassword(event.target.value)}
-                />
-              </Field>
-              {login.error ? (
-                <Alert variant="destructive">
-                  <AlertDescription>{login.error.message}</AlertDescription>
-                </Alert>
-              ) : null}
-              <Button
-                type="submit"
-                className="w-full"
-                disabled={login.isPending}
-              >
-                {login.isPending ? <Spinner data-icon="inline-start" /> : null}
-                Log in
-              </Button>
-            </FieldGroup>
-          </form>
-        </CardContent>
-        <CardFooter>
-          <p className="text-sm text-muted-foreground">
-            New to DashNode?{' '}
+    <main className="mx-auto flex w-full max-w-sm flex-1 flex-col justify-center px-4 py-16">
+      <form
+        onSubmit={(event) => {
+          event.preventDefault()
+          event.stopPropagation()
+          void form.handleSubmit()
+        }}
+      >
+        <FieldGroup>
+          <div className="flex flex-col items-center gap-2 text-center">
             <Link
-              to="/signup"
-              className="font-medium underline underline-offset-4"
+              to="/"
+              className="flex flex-col items-center gap-2 font-medium"
             >
-              Create an account
+              <div className="flex size-8 items-center justify-center rounded-md">
+                <FeatherIcon className="size-6" />
+              </div>
+              <span className="sr-only">DashNode</span>
             </Link>
-          </p>
-        </CardFooter>
-      </Card>
+            <h1 className="text-xl font-bold">Welcome back</h1>
+            <FieldDescription>
+              Don&apos;t have an account? <Link to="/signup">Sign up</Link>
+            </FieldDescription>
+          </div>
+
+          <form.Field name="email">
+            {(field) => {
+              const isInvalid =
+                field.state.meta.isTouched && !field.state.meta.isValid
+
+              return (
+                <Field data-invalid={isInvalid}>
+                  <FieldLabel htmlFor={field.name}>Email</FieldLabel>
+                  <Input
+                    id={field.name}
+                    name={field.name}
+                    type="email"
+                    autoComplete="email"
+                    placeholder="m@example.com"
+                    required
+                    value={field.state.value}
+                    onBlur={field.handleBlur}
+                    onChange={(event) => field.handleChange(event.target.value)}
+                    aria-invalid={isInvalid}
+                  />
+                  {isInvalid ? (
+                    <FieldError errors={field.state.meta.errors} />
+                  ) : null}
+                </Field>
+              )
+            }}
+          </form.Field>
+
+          <form.Field name="password">
+            {(field) => {
+              const isInvalid =
+                field.state.meta.isTouched && !field.state.meta.isValid
+
+              return (
+                <Field data-invalid={isInvalid}>
+                  <FieldLabel htmlFor={field.name}>Password</FieldLabel>
+                  <Input
+                    id={field.name}
+                    name={field.name}
+                    type="password"
+                    autoComplete="current-password"
+                    required
+                    value={field.state.value}
+                    onBlur={field.handleBlur}
+                    onChange={(event) => field.handleChange(event.target.value)}
+                    aria-invalid={isInvalid}
+                  />
+                  {isInvalid ? (
+                    <FieldError errors={field.state.meta.errors} />
+                  ) : null}
+                </Field>
+              )
+            }}
+          </form.Field>
+
+          {login.error ? (
+            <Alert variant="destructive">
+              <AlertDescription>{login.error.message}</AlertDescription>
+            </Alert>
+          ) : null}
+
+          <Field>
+            <form.Subscribe
+              selector={(state) => state.isSubmitting}
+              children={(isSubmitting) => (
+                <Button type="submit" disabled={isSubmitting}>
+                  {isSubmitting ? <Spinner data-icon="inline-start" /> : null}
+                  Log in
+                </Button>
+              )}
+            />
+          </Field>
+        </FieldGroup>
+      </form>
     </main>
   )
 }

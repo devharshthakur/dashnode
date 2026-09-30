@@ -1,20 +1,19 @@
+import { useForm } from '@tanstack/react-form'
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
-import { useState } from 'react'
-import type { FormEvent } from 'react'
+import { FeatherIcon } from 'lucide-react'
 
 import { Alert, AlertDescription } from '#/components/ui/alert'
 import { Button } from '#/components/ui/button'
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from '#/components/ui/card'
-import { Field, FieldGroup, FieldLabel } from '#/components/ui/field'
+  Field,
+  FieldDescription,
+  FieldError,
+  FieldGroup,
+  FieldLabel,
+} from '#/components/ui/field'
 import { Input } from '#/components/ui/input'
 import { Spinner } from '#/components/ui/spinner'
+import { signupSchema } from '#/lib/auth-schemas'
 import { useSignup } from '#/lib/session'
 
 export const Route = createFileRoute('/signup')({
@@ -25,96 +24,152 @@ export const Route = createFileRoute('/signup')({
 function SignupPage() {
   const navigate = useNavigate()
   const signup = useSignup()
-  const [name, setName] = useState('')
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault()
-
-    signup.mutate(
-      { name, email, password },
-      { onSuccess: () => void navigate({ to: '/dashboard' }) },
-    )
-  }
+  const form = useForm({
+    defaultValues: { name: '', email: '', password: '' },
+    validators: { onSubmit: signupSchema },
+    onSubmit: async ({ value }) => {
+      try {
+        await signup.mutateAsync(value)
+        await navigate({ to: '/dashboard' })
+      } catch {
+        // TanStack Query keeps the failure on `signup.error`, which the alert
+        // below renders; swallowing it here keeps the rejection from escaping
+        // `handleSubmit`.
+      }
+    },
+  })
 
   return (
-    <main className="mx-auto flex w-full max-w-6xl flex-1 items-center justify-center px-4 py-16">
-      <Card className="w-full max-w-md">
-        <CardHeader>
-          <CardTitle>Create your account</CardTitle>
-          <CardDescription>
-            Start publishing Markdown posts on DashNode.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit}>
-            <FieldGroup>
-              <Field>
-                <FieldLabel htmlFor="name">Name</FieldLabel>
-                <Input
-                  id="name"
-                  name="name"
-                  autoComplete="name"
-                  maxLength={100}
-                  required
-                  value={name}
-                  onChange={(event) => setName(event.target.value)}
-                />
-              </Field>
-              <Field>
-                <FieldLabel htmlFor="email">Email</FieldLabel>
-                <Input
-                  id="email"
-                  name="email"
-                  type="email"
-                  autoComplete="email"
-                  required
-                  value={email}
-                  onChange={(event) => setEmail(event.target.value)}
-                />
-              </Field>
-              <Field>
-                <FieldLabel htmlFor="password">Password</FieldLabel>
-                <Input
-                  id="password"
-                  name="password"
-                  type="password"
-                  autoComplete="new-password"
-                  minLength={8}
-                  required
-                  value={password}
-                  onChange={(event) => setPassword(event.target.value)}
-                />
-              </Field>
-              {signup.error ? (
-                <Alert variant="destructive">
-                  <AlertDescription>{signup.error.message}</AlertDescription>
-                </Alert>
-              ) : null}
-              <Button
-                type="submit"
-                className="w-full"
-                disabled={signup.isPending}
-              >
-                {signup.isPending ? <Spinner data-icon="inline-start" /> : null}
-                Create account
-              </Button>
-            </FieldGroup>
-          </form>
-        </CardContent>
-        <CardFooter>
-          <p className="text-sm text-muted-foreground">
-            Already have an account?{' '}
+    <main className="mx-auto flex w-full max-w-sm flex-1 flex-col justify-center px-4 py-16">
+      <form
+        onSubmit={(event) => {
+          event.preventDefault()
+          event.stopPropagation()
+          void form.handleSubmit()
+        }}
+      >
+        <FieldGroup>
+          <div className="flex flex-col items-center gap-2 text-center">
             <Link
-              to="/login"
-              className="font-medium underline underline-offset-4"
+              to="/"
+              className="flex flex-col items-center gap-2 font-medium"
             >
-              Log in
+              <div className="flex size-8 items-center justify-center rounded-md">
+                <FeatherIcon className="size-6" />
+              </div>
+              <span className="sr-only">DashNode</span>
             </Link>
-          </p>
-        </CardFooter>
-      </Card>
+            <h1 className="text-xl font-bold">Create your account</h1>
+            <FieldDescription>
+              Already have an account? <Link to="/login">Log in</Link>
+            </FieldDescription>
+          </div>
+
+          <form.Field name="name">
+            {(field) => {
+              const isInvalid =
+                field.state.meta.isTouched && !field.state.meta.isValid
+
+              return (
+                <Field data-invalid={isInvalid}>
+                  <FieldLabel htmlFor={field.name}>Name</FieldLabel>
+                  <Input
+                    id={field.name}
+                    name={field.name}
+                    autoComplete="name"
+                    placeholder="Ada Lovelace"
+                    required
+                    value={field.state.value}
+                    onBlur={field.handleBlur}
+                    onChange={(event) => field.handleChange(event.target.value)}
+                    aria-invalid={isInvalid}
+                  />
+                  {isInvalid ? (
+                    <FieldError errors={field.state.meta.errors} />
+                  ) : null}
+                </Field>
+              )
+            }}
+          </form.Field>
+
+          <form.Field name="email">
+            {(field) => {
+              const isInvalid =
+                field.state.meta.isTouched && !field.state.meta.isValid
+
+              return (
+                <Field data-invalid={isInvalid}>
+                  <FieldLabel htmlFor={field.name}>Email</FieldLabel>
+                  <Input
+                    id={field.name}
+                    name={field.name}
+                    type="email"
+                    autoComplete="email"
+                    placeholder="m@example.com"
+                    required
+                    value={field.state.value}
+                    onBlur={field.handleBlur}
+                    onChange={(event) => field.handleChange(event.target.value)}
+                    aria-invalid={isInvalid}
+                  />
+                  {isInvalid ? (
+                    <FieldError errors={field.state.meta.errors} />
+                  ) : null}
+                </Field>
+              )
+            }}
+          </form.Field>
+
+          <form.Field name="password">
+            {(field) => {
+              const isInvalid =
+                field.state.meta.isTouched && !field.state.meta.isValid
+
+              return (
+                <Field data-invalid={isInvalid}>
+                  <FieldLabel htmlFor={field.name}>Password</FieldLabel>
+                  <Input
+                    id={field.name}
+                    name={field.name}
+                    type="password"
+                    autoComplete="new-password"
+                    required
+                    value={field.state.value}
+                    onBlur={field.handleBlur}
+                    onChange={(event) => field.handleChange(event.target.value)}
+                    aria-invalid={isInvalid}
+                  />
+                  <FieldDescription>
+                    Must be at least 8 characters.
+                  </FieldDescription>
+                  {isInvalid ? (
+                    <FieldError errors={field.state.meta.errors} />
+                  ) : null}
+                </Field>
+              )
+            }}
+          </form.Field>
+
+          {signup.error ? (
+            <Alert variant="destructive">
+              <AlertDescription>{signup.error.message}</AlertDescription>
+            </Alert>
+          ) : null}
+
+          <Field>
+            <form.Subscribe
+              selector={(state) => state.isSubmitting}
+              children={(isSubmitting) => (
+                <Button type="submit" disabled={isSubmitting}>
+                  {isSubmitting ? <Spinner data-icon="inline-start" /> : null}
+                  Create account
+                </Button>
+              )}
+            />
+          </Field>
+        </FieldGroup>
+      </form>
     </main>
   )
 }
