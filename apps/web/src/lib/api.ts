@@ -1,3 +1,6 @@
+import axios from 'axios'
+import type { AxiosError, AxiosRequestConfig } from 'axios'
+
 // Base URL of the Express API. Defaults to the local development server; set
 // `VITE_API_URL` (for example in `apps/web/.env`) to point at another API.
 const configuredApiUrl: unknown = import.meta.env.VITE_API_URL
@@ -5,7 +8,7 @@ const configuredApiUrl: unknown = import.meta.env.VITE_API_URL
 export const API_BASE_URL =
   typeof configuredApiUrl === 'string' && configuredApiUrl.length > 0
     ? configuredApiUrl
-    : 'http://localhost:3001/api'
+    : 'http://localhost:8000/api'
 
 interface ApiErrorBody {
   error?: unknown
@@ -22,59 +25,50 @@ export class ApiError extends Error {
   }
 }
 
-// The API answers failures with `{ error: string }`, but a proxy or a crashed
-// server may answer with HTML, so a body that cannot be read falls back to the
-// status instead of throwing from inside the error path.
-async function readErrorMessage(response: Response): Promise<string> {
-  try {
-    const body = (await response.json()) as ApiErrorBody
+// The session is an HttpOnly cookie that belongs to the API origin, so every
+// request opts into sending credentials.
+export const apiClient = axios.create({
+  baseURL: API_BASE_URL,
+  withCredentials: true,
+})
 
-    if (typeof body.error === 'string' && body.error.length > 0) {
-      return body.error
-    }
-  } catch {
-    // Not JSON; the status-based message below is more useful than a parse error.
+// The API answers failures with `{ error: string }`, but a proxy or a crashed
+// server may answer with HTML, so a body without that shape falls back to the
+// status instead of surfacing an unrelated message.
+function readErrorMessage(error: AxiosError<ApiErrorBody>): string {
+  const body: ApiErrorBody | null | undefined = error.response?.data
+  const message = body?.error
+
+  if (typeof message === 'string' && message.length > 0) {
+    return message
   }
 
-  return `Request failed with status ${response.status}`
-}
+  if (error.response) {
+    return `Request failed with status ${error.response.status}`
+  }
 
-// JSON is the only body shape the API accepts, so the caller sends an object
-// and this keeps the content type consistent.
-export interface ApiRequest {
-  method?: string
-  body?: string
-  headers?: Record<string, string>
+  return error.message
 }
 
 /**
  * Calls the API with the session cookie attached. Every non-2xx answer becomes
  * an {@link ApiError}, so callers branch on `status` rather than inspecting the
- * response themselves.
+ * response themselves. A request that never reached the API keeps its original
+ * error, which lets a query keep an error state instead of a false answer.
  */
-export async function apiFetch<T>(
+export async function apiRequest<T>(
   path: string,
-  request: ApiRequest = {},
+  config: AxiosRequestConfig = {},
 ): Promise<T> {
-  const { body, headers, ...rest } = request
+  try {
+    const response = await apiClient.request<T>({ url: path, ...config })
 
-  const response = await fetch(`${API_BASE_URL}${path}`, {
-    credentials: 'include',
-    ...rest,
-    body,
-    headers: {
-      ...(body === undefined ? {} : { 'Content-Type': 'application/json' }),
-      ...headers,
-    },
-  })
+    return response.status === 204 ? (undefined as T) : response.data
+  } catch (error) {
+    if (axios.isAxiosError<ApiErrorBody>(error) && error.response) {
+      throw new ApiError(error.response.status, readErrorMessage(error))
+    }
 
-  if (!response.ok) {
-    throw new ApiError(response.status, await readErrorMessage(response))
+    throw error
   }
-
-  if (response.status === 204) {
-    return undefined as T
-  }
-
-  return (await response.json()) as T
 }

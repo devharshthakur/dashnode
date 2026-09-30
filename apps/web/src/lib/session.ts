@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
-import { ApiError, apiFetch } from '#/lib/api'
+import { ApiError, apiRequest } from '#/lib/api'
 
 /** The signed-in account, as `GET /api/auth/me` returns it. */
 export interface SessionUser {
@@ -31,7 +31,7 @@ export const sessionQueryKey = ['session'] as const
 // so the query keeps an error state to show instead of a false "signed out".
 async function fetchSession(): Promise<SessionUser | null> {
   try {
-    const { user } = await apiFetch<UserEnvelope>('/auth/me')
+    const { user } = await apiRequest<UserEnvelope>('/auth/me')
     return user
   } catch (error) {
     if (error instanceof ApiError && error.status === 401) {
@@ -57,9 +57,9 @@ export function useLogin() {
 
   return useMutation({
     mutationFn: (input: LoginInput) =>
-      apiFetch<UserEnvelope>('/auth/login', {
+      apiRequest<UserEnvelope>('/auth/login', {
         method: 'POST',
-        body: JSON.stringify(input),
+        data: input,
       }),
     onSuccess: ({ user }) => {
       queryClient.setQueryData(sessionQueryKey, user)
@@ -72,9 +72,9 @@ export function useSignup() {
 
   return useMutation({
     mutationFn: (input: SignupInput) =>
-      apiFetch<UserEnvelope>('/auth/register', {
+      apiRequest<UserEnvelope>('/auth/register', {
         method: 'POST',
-        body: JSON.stringify(input),
+        data: input,
       }),
     onSuccess: ({ user }) => {
       queryClient.setQueryData(sessionQueryKey, user)
@@ -87,7 +87,7 @@ export function useLogout() {
 
   return useMutation({
     mutationFn: () =>
-      apiFetch<{ message: string }>('/auth/logout', { method: 'POST' }),
+      apiRequest<{ message: string }>('/auth/logout', { method: 'POST' }),
     onSuccess: () => {
       queryClient.setQueryData(sessionQueryKey, null)
     },
