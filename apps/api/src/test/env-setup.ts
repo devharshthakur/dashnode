@@ -41,16 +41,69 @@ export function loadTestEnv(path = TEST_ENV_PATH): Record<string, string> {
 }
 
 /**
- * Validates the file the way `src/env.ts` validates the environment built from
- * it. `NODE_ENV` is supplied because the file deliberately omits it — Vitest
- * sets it — and the schema's defaults cover the rest, so a key is required only
- * when it has no default, which today means `JWT_SECRET`.
+ * Vitest defaults `NODE_ENV` to `test` only when it is unset. A runner that
+ * already exported another value keeps it, and the suite would then silently
+ * load the wrong file — or none. Refuse that before anything else runs.
  */
-export function validateTestEnv(values: Record<string, string>): void {
-  const parsed = envSchema.safeParse({ NODE_ENV: 'test', ...values })
+export function rejectUnexpectedNodeEnv(
+  runnerEnv = process.env.NODE_ENV,
+): void {
+  if (runnerEnv !== undefined && runnerEnv !== 'test') {
+    throw new Error(
+      `Refusing to run the test suite under NODE_ENV=${runnerEnv}. Vitest ` +
+        'defaults NODE_ENV to test only when it is unset; unset it and rerun.',
+    )
+  }
+}
+
+/**
+ * The runner selects the environment, never the file, so `.env.test` must not
+ * declare `NODE_ENV` at all — not even `NODE_ENV=test` — or the file could
+ * replace the value the runner already decided.
+ */
+export function rejectDeclaredNodeEnv(values: Record<string, string>): void {
+  if (values.NODE_ENV !== undefined) {
+    throw new Error(
+      '.env.test must not declare NODE_ENV; the runner selects the ' +
+        'environment, and the file is only read after that choice is made.',
+    )
+  }
+}
+
+/**
+ * The environment `src/env.ts` will parse once the file is loaded. It mirrors
+ * that module's precedence: a shell or CI variable already exported wins over
+ * the file, and `NODE_ENV` is always `test` here (the runner default, already
+ * checked above).
+ */
+export function effectiveTestEnv(
+  values: Record<string, string>,
+): Record<string, unknown> {
+  const effective: Record<string, unknown> = { ...values }
+
+  for (const [key, value] of Object.entries(process.env)) {
+    if (value !== undefined) {
+      effective[key] = value
+    }
+  }
+
+  effective.NODE_ENV = process.env.NODE_ENV ?? 'test'
+
+  return effective
+}
+
+/**
+ * Validates what the workers will actually parse, not just the file: an invalid
+ * value exported by the shell or CI has to fail here, before a worker starts,
+ * rather than be discovered by `src/env.ts` inside a worker.
+ */
+export function validateEffectiveTestEnv(values: Record<string, string>): void {
+  const parsed = envSchema.safeParse(effectiveTestEnv(values))
 
   if (!parsed.success) {
-    throw new Error(`.env.test is invalid:\n${z.prettifyError(parsed.error)}`)
+    throw new Error(
+      `Invalid test environment:\n${z.prettifyError(parsed.error)}`,
+    )
   }
 }
 
@@ -67,19 +120,15 @@ export function applyTestEnv(values: Record<string, string>): void {
 
 /**
  * The Vitest global setup. It is listed before the replica set so a missing or
- * invalid `.env.test` aborts the run before a worker starts or a test executes.
- * It logs the file it reads and the variables it validated, so a run shows
- * where the suite's environment came from.
+ * invalid `.env.test` — or an unexpected runner environment — aborts the run
+ * before MongoDB starts or a worker executes.
  */
 export function setup(): void {
-  console.log(`[env] loading ${TEST_ENV_PATH}`)
+  rejectUnexpectedNodeEnv()
 
   const values = loadTestEnv()
 
-  validateTestEnv(values)
+  rejectDeclaredNodeEnv(values)
+  validateEffectiveTestEnv(values)
   applyTestEnv(values)
-
-  console.log(
-    `[env] .env.test validated against the env schema: ${Object.keys(values).sort().join(', ')}`,
-  )
 }

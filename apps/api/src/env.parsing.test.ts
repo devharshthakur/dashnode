@@ -1,85 +1,44 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { describe, expect, it } from 'vitest'
 
-// `src/env.ts` reads nothing from `node:fs` except this one function, so the
-// mocked module is described by the single export the case steers.
-type FsModule = Record<string, unknown> & {
-  existsSync: (path: string) => boolean
-}
-
-// `src/env.ts` decides which file to read with `existsSync`. Reporting the file
-// as absent keeps these cases on the schema itself: without the mock, a value
-// `.env.test` or a developer's `.env` happens to define would be re-read into
-// `process.env` by every import and the "absent" case could not be reached.
-vi.mock('node:fs', async (importOriginal) => {
-  const actual = (await importOriginal()) as FsModule
-
-  return { ...actual, existsSync: () => false }
-})
+import { envSchema } from '#schemas/env'
 
 const SECRET = 'a'.repeat(32)
-const KEYS = [
-  'NODE_ENV',
-  'PORT',
-  'LOG_LEVEL',
-  'MONGO_URI',
-  'CORS_ORIGIN',
-  'JWT_SECRET',
-  'HTTP_TIMEOUT_MS',
-  'HTTP_BASE_URL',
-]
 
-// `env.ts` runs its whole parse at import time, so each case resets the module
-// registry and imports it again. A single static import can only be tested once.
-async function importEnv() {
-  const { env } = await import('#env')
-
-  return env
-}
-
-beforeEach(() => {
-  vi.resetModules()
-
-  for (const key of KEYS) {
-    vi.stubEnv(key, undefined)
-  }
-
-  vi.stubEnv('JWT_SECRET', SECRET)
-  // The module reports every failure on `console` before exiting, and half of
-  // these cases are meant to fail.
-  vi.spyOn(console, 'error').mockImplementation(() => {})
-})
-
-afterEach(() => {
-  vi.unstubAllEnvs()
-  vi.restoreAllMocks()
-})
-
-describe('env defaults', () => {
-  it('supplies every value the schema has a default for', async () => {
-    const env = await importEnv()
-
-    expect(env.NODE_ENV).toBe('development')
-    expect(env.PORT).toBe(3001)
-    expect(env.LOG_LEVEL).toBe('info')
-    expect(env.MONGO_URI).toBe('mongodb://localhost:27017/hashnode')
-    expect(env.CORS_ORIGIN).toBe('http://localhost:5173')
-    expect(env.HTTP_TIMEOUT_MS).toBe(10_000)
+// The schema itself, exercised directly: defaults, coercion, and the rejection
+// matrix. `src/env.ts` applies this to `process.env`, and the Vitest pre-flight
+// applies it to the effective test environment; both are covered by their own
+// tests rather than restated here.
+describe('envSchema', () => {
+  it('supplies every value the schema has a default for', () => {
+    expect(envSchema.parse({ JWT_SECRET: SECRET })).toMatchObject({
+      NODE_ENV: 'development',
+      PORT: 3001,
+      LOG_LEVEL: 'info',
+      MONGO_URI: 'mongodb://localhost:27017/hashnode',
+      CORS_ORIGIN: 'http://localhost:5173',
+      HTTP_TIMEOUT_MS: 10_000,
+    })
   })
 
-  it('leaves an optional variable unset', async () => {
-    expect((await importEnv()).HTTP_BASE_URL).toBeUndefined()
+  it('leaves an optional variable unset', () => {
+    expect(
+      envSchema.parse({ JWT_SECRET: SECRET }).HTTP_BASE_URL,
+    ).toBeUndefined()
   })
-})
 
-describe('env coercion', () => {
-  it('coerces the numeric variables from strings', async () => {
-    vi.stubEnv('PORT', '4321')
-    vi.stubEnv('HTTP_TIMEOUT_MS', '2500')
-
-    const env = await importEnv()
+  it('coerces the numeric variables from strings', () => {
+    const env = envSchema.parse({
+      JWT_SECRET: SECRET,
+      PORT: '4321',
+      HTTP_TIMEOUT_MS: '2500',
+    })
 
     expect(env.PORT).toBe(4321)
     expect(env.HTTP_TIMEOUT_MS).toBe(2500)
+  })
+
+  it('rejects a signing secret shorter than 32 characters', () => {
+    expect(envSchema.safeParse({ JWT_SECRET: 'too-short' }).success).toBe(false)
   })
 
   it.each([
@@ -87,62 +46,27 @@ describe('env coercion', () => {
     ['PORT', '-1'],
     ['HTTP_TIMEOUT_MS', '0'],
     ['HTTP_TIMEOUT_MS', 'soon'],
-  ])('rejects %s=%s', async (key, value) => {
-    const exit = stubExit()
-    vi.stubEnv(key, value)
+  ])('rejects %s=%s', (key, value) => {
+    const parsed = envSchema.safeParse({ JWT_SECRET: SECRET, [key]: value })
 
-    await importEnv()
+    expect(parsed.success).toBe(false)
+  })
 
-    expect(exit).toHaveBeenCalledWith(1)
+  it('rejects an environment outside the enum', () => {
+    const parsed = envSchema.safeParse({
+      JWT_SECRET: SECRET,
+      NODE_ENV: 'staging',
+    })
+
+    expect(parsed.success).toBe(false)
+  })
+
+  it('rejects a log level outside the enum', () => {
+    const parsed = envSchema.safeParse({
+      JWT_SECRET: SECRET,
+      LOG_LEVEL: 'chatty',
+    })
+
+    expect(parsed.success).toBe(false)
   })
 })
-
-describe('env failures', () => {
-  it('rejects a signing secret shorter than 32 characters', async () => {
-    const exit = stubExit()
-    const logged = console.error as unknown as ReturnType<typeof vi.fn>
-    vi.stubEnv('JWT_SECRET', 'too-short')
-
-    await importEnv()
-
-    expect(exit).toHaveBeenCalledWith(1)
-    expect(logged.mock.calls.flat().join('\n')).toContain('JWT_SECRET')
-  })
-
-  it('rejects an environment outside the enum', async () => {
-    const exit = stubExit()
-    vi.stubEnv('NODE_ENV', 'staging')
-
-    await importEnv()
-
-    expect(exit).toHaveBeenCalledWith(1)
-  })
-
-  it('rejects a log level outside the enum', async () => {
-    const exit = stubExit()
-    vi.stubEnv('LOG_LEVEL', 'chatty')
-
-    await importEnv()
-
-    expect(exit).toHaveBeenCalledWith(1)
-  })
-
-  // Without this, the first failing import would take the whole worker with it.
-  it('prints the reason before exiting', async () => {
-    stubExit()
-    const logged = console.error as unknown as ReturnType<typeof vi.fn>
-    vi.stubEnv('JWT_SECRET', 'too-short')
-
-    await importEnv()
-
-    expect(logged).toHaveBeenCalled()
-  })
-})
-
-// A real `process.exit` would end the worker mid-suite, so every failing import
-// stands on a stub that records the call and returns.
-function stubExit() {
-  return vi
-    .spyOn(process, 'exit')
-    .mockImplementation((() => undefined) as never)
-}

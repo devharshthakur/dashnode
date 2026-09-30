@@ -3,11 +3,19 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { envSchema } from '#schemas/env'
 import {
   applyTestEnv,
+  effectiveTestEnv,
   loadTestEnv,
+  rejectDeclaredNodeEnv,
+  rejectUnexpectedNodeEnv,
   setup,
   TEST_ENV_PATH,
-  validateTestEnv,
+  validateEffectiveTestEnv,
 } from '#test/env-setup'
+
+afterEach(() => {
+  vi.unstubAllEnvs()
+  vi.restoreAllMocks()
+})
 
 describe('loadTestEnv', () => {
   it('reads the committed file', () => {
@@ -22,35 +30,72 @@ describe('loadTestEnv', () => {
   })
 })
 
-describe('validateTestEnv', () => {
-  // `.env.test` omits NODE_ENV, so this passes only because the pre-flight
-  // supplies the value Vitest sets.
+describe('rejectUnexpectedNodeEnv', () => {
+  it('accepts the test environment and an unset one', () => {
+    expect(() => rejectUnexpectedNodeEnv('test')).not.toThrow()
+    expect(() => rejectUnexpectedNodeEnv(undefined)).not.toThrow()
+  })
+
+  it('rejects any other runner environment', () => {
+    expect(() => rejectUnexpectedNodeEnv('production')).toThrow(
+      /NODE_ENV=production/,
+    )
+  })
+})
+
+describe('rejectDeclaredNodeEnv', () => {
+  it('accepts a file that omits NODE_ENV', () => {
+    expect(() => rejectDeclaredNodeEnv({ LOG_LEVEL: 'silent' })).not.toThrow()
+  })
+
+  // Even `NODE_ENV=test` is refused: the file is only read after the runner has
+  // already selected the environment, so the file must not select or replace it.
+  it('rejects a file that declares NODE_ENV', () => {
+    expect(() =>
+      rejectDeclaredNodeEnv({ NODE_ENV: 'test', LOG_LEVEL: 'silent' }),
+    ).toThrow(/NODE_ENV/)
+  })
+})
+
+describe('effectiveTestEnv', () => {
+  it('gives a shell value precedence over the file', () => {
+    vi.stubEnv('LOG_LEVEL', 'error')
+
+    expect(effectiveTestEnv({ LOG_LEVEL: 'debug' }).LOG_LEVEL).toBe('error')
+  })
+
+  it('treats an unset NODE_ENV as test', () => {
+    vi.stubEnv('NODE_ENV', undefined)
+
+    expect(effectiveTestEnv({}).NODE_ENV).toBe('test')
+  })
+})
+
+describe('validateEffectiveTestEnv', () => {
   it('accepts the committed file', () => {
-    expect(() => validateTestEnv(loadTestEnv())).not.toThrow()
+    expect(() => validateEffectiveTestEnv(loadTestEnv())).not.toThrow()
   })
 
-  it('rejects a required key the file omits', () => {
-    expect(() => validateTestEnv({ LOG_LEVEL: 'silent' })).toThrow('JWT_SECRET')
+  it('rejects a file value that fails validation', () => {
+    // Unset the shell value the real pre-flight already applied, so the bad
+    // file value is the one the effective environment actually parses.
+    vi.stubEnv('JWT_SECRET', undefined)
+
+    expect(() => validateEffectiveTestEnv({ JWT_SECRET: 'too-short' })).toThrow(
+      /JWT_SECRET/,
+    )
   })
 
-  it('rejects a value that fails validation', () => {
-    expect(() =>
-      validateTestEnv({ JWT_SECRET: 'too-short', LOG_LEVEL: 'silent' }),
-    ).toThrow('JWT_SECRET')
-  })
+  // The pre-flight gate, not a worker, has to catch a bad value the shell or CI
+  // exported over an otherwise valid file.
+  it('rejects an invalid shell override despite a valid file', () => {
+    vi.stubEnv('LOG_LEVEL', 'chatty')
 
-  it('rejects a log level outside the enum', () => {
-    expect(() =>
-      validateTestEnv({ JWT_SECRET: 'a'.repeat(32), LOG_LEVEL: 'chatty' }),
-    ).toThrow('LOG_LEVEL')
+    expect(() => validateEffectiveTestEnv(loadTestEnv())).toThrow(/LOG_LEVEL/)
   })
 })
 
 describe('applyTestEnv', () => {
-  afterEach(() => {
-    vi.unstubAllEnvs()
-  })
-
   it('keeps a value the runner already exported', () => {
     vi.stubEnv('TEST_ENV_PREFLIGHT_PROBE', 'from-the-shell')
 
@@ -81,24 +126,30 @@ describe('the committed .env.test', () => {
 })
 
 describe('setup', () => {
-  afterEach(() => {
-    vi.unstubAllEnvs()
-    vi.restoreAllMocks()
-  })
-
-  // The run's output has to say what it loaded and what it validated, so a
-  // misconfigured checkout is diagnosable without instrumenting it by hand.
-  it('logs the file it loads and the variables it validated', () => {
-    const logged = vi.spyOn(console, 'log').mockImplementation(() => {})
-    vi.stubEnv('LOG_LEVEL', undefined)
+  it('validates and applies the committed file', () => {
     vi.stubEnv('JWT_SECRET', undefined)
 
     setup()
 
-    const output = logged.mock.calls.flat().join('\n')
+    expect(process.env.JWT_SECRET).toBe(loadTestEnv().JWT_SECRET)
+    expect(process.env.LOG_LEVEL).toBe(loadTestEnv().LOG_LEVEL)
+  })
 
-    expect(output).toContain('.env.test')
-    expect(output).toContain('LOG_LEVEL')
-    expect(output).toContain('JWT_SECRET')
+  it('rejects an unexpected runner environment before applying anything', () => {
+    vi.stubEnv('NODE_ENV', 'production')
+    vi.stubEnv('JWT_SECRET', undefined)
+
+    expect(() => setup()).toThrow(/NODE_ENV=production/)
+    expect(process.env.JWT_SECRET).toBeUndefined()
+  })
+
+  // Validation runs before `applyTestEnv`, so a failing gate must not leak half
+  // the file into the workers.
+  it('does not partially apply the file when validation fails', () => {
+    vi.stubEnv('LOG_LEVEL', 'chatty')
+    vi.stubEnv('JWT_SECRET', undefined)
+
+    expect(() => setup()).toThrow(/LOG_LEVEL/)
+    expect(process.env.JWT_SECRET).toBeUndefined()
   })
 })

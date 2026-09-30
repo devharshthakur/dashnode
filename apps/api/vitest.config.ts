@@ -13,8 +13,9 @@ export default defineConfig({
     // `global-setup.ts` then runs the one in-memory replica set the whole run
     // shares, and stops it when the run ends.
     globalSetup: ['src/test/env-setup.ts', 'src/test/global-setup.ts'],
-    // Vitest sets `NODE_ENV=test` before any setup file runs, and that is what
-    // makes `src/env.ts` load `.env.test`.
+    // Vitest defaults `NODE_ENV=test` only when it is unset, and that is what
+    // makes `src/env.ts` load `.env.test`. `env-setup.ts` rejects any other
+    // runner-provided value before the replica set starts.
     testTimeout: 30_000,
     hookTimeout: 30_000,
     coverage: {
