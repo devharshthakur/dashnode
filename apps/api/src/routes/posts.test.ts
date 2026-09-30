@@ -604,15 +604,21 @@ describe('GET /api/posts/mine/list', () => {
 })
 
 describe('GET /api/posts/mine/:id', () => {
-  it('answers the author with the post and its body', async () => {
+  // The private detail endpoint serves the author's drafts; a published post is
+  // already public through the slug read, so the ownership boundary is proved
+  // on a draft.
+  it('answers the author with their draft and its body', async () => {
     const session = await author()
     const post = await createPost(authorRef(session), {
+      status: 'draft',
       content: 'Private body.',
     })
 
     const response = await session.agent.get(`/api/posts/mine/${post.id}`)
 
     expect(response.status).toBe(200)
+    expect(response.body.post.id).toBe(post.id)
+    expect(response.body.post.status).toBe('draft')
     expect(response.body.post.content).toBe('Private body.')
   })
 

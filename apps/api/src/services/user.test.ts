@@ -5,7 +5,6 @@ import { InvalidUserIdError, UserNotFoundError } from '#errors/user'
 import { getPublicUserProfile } from '#services/user'
 import { createPost, createUser } from '#test/factories'
 import { decodePostCursor } from '#utils/cursor'
-import { postCursorFor } from '#utils/post'
 
 describe('getPublicUserProfile', () => {
   it('rejects an id that is not an ObjectId', async () => {
@@ -68,7 +67,7 @@ describe('getPublicUserProfile', () => {
     ])
   })
 
-  it('passes the requested page through to the list query', async () => {
+  it('follows the returned cursor to the next page', async () => {
     const user = await createUser()
     const posts = await Promise.all(
       Array.from({ length: 3 }, (_, index) =>
@@ -79,25 +78,27 @@ describe('getPublicUserProfile', () => {
     )
 
     const first = await getPublicUserProfile(user.id, { limit: 2 })
-    const last = first.posts.at(-1)
-    const cursor = decodePostCursor(
-      (last && postCursorFor(last, 'publishedAt')) ?? '',
-    )
+    // The service's own cursor is the one the client would send back; building
+    // a fresh one from the last post would pass even if `nextCursor` were wrong.
+    const cursor = decodePostCursor(first.nextCursor ?? '')
+
+    expect(cursor).not.toBeNull()
     const second = await getPublicUserProfile(user.id, {
       limit: 2,
       cursor: cursor ?? undefined,
     })
 
     expect(first.posts).toHaveLength(2)
-    expect(first.nextCursor).not.toBeNull()
     expect(second.posts).toHaveLength(1)
     expect(second.nextCursor).toBeNull()
-    // Counting pages is not enough: a repeated post and a missing one would
-    // satisfy the two lengths above.
+    // Exact order and no repetition: two page lengths would also be satisfied
+    // by a dropped post or a duplicate. Posts were created in ascending
+    // `publishedAt` order, and the profile lists newest first.
     const ids = [...first.posts, ...second.posts].map((post) =>
       post._id.toString(),
     )
-    expect(ids.sort()).toEqual(posts.map((post) => post._id.toString()).sort())
+    const expected = [...posts].reverse().map((post) => post._id.toString())
+    expect(ids).toEqual(expected)
     expect(new Set(ids).size).toBe(ids.length)
   })
 })

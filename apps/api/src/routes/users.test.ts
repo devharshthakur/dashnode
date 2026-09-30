@@ -93,9 +93,9 @@ describe('GET /api/users/:id', () => {
     expect(unknown.body).toEqual({ error: 'User not found' })
   })
 
-  it('applies the same page bounds as the other lists', async () => {
+  it('follows the returned cursor to the next page', async () => {
     const user = await createUser()
-    await Promise.all([
+    const posts = await Promise.all([
       createPost(user, { publishedAt: new Date('2024-01-01T00:00:00.000Z') }),
       createPost(user, { publishedAt: new Date('2024-02-01T00:00:00.000Z') }),
       createPost(user, { publishedAt: new Date('2024-03-01T00:00:00.000Z') }),
@@ -111,6 +111,21 @@ describe('GET /api/users/:id', () => {
     expect(page.body.nextCursor).not.toBeNull()
     expect(badLimit.status).toBe(400)
     expect(badCursor.status).toBe(400)
+
+    // The cursor the route returned is what the client sends back; asserting
+    // the second page here proves the route forwards it rather than only the
+    // service reconstructing one.
+    const second = await api().get(
+      `/api/users/${user.id}?limit=2&cursor=${page.body.nextCursor}`,
+    )
+
+    expect(second.status).toBe(200)
+    expect(second.body.nextCursor).toBeNull()
+    const ids = [...page.body.posts, ...second.body.posts].map(
+      (post: { id: string }) => post.id,
+    )
+    expect(ids).toEqual([posts[2].id, posts[1].id, posts[0].id])
+    expect(new Set(ids).size).toBe(ids.length)
   })
 })
 

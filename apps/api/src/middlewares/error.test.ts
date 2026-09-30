@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { NextFunction, Request, Response } from 'express'
 
+import { logger } from '#config/logger'
 import { RevokedToken } from '#models/revoked-token'
 import { errorHandler } from '#middlewares/error'
 import { api, registeredSession, trustedOrigin } from '#test/app'
@@ -43,14 +44,26 @@ afterEach(() => {
 })
 
 describe('errorHandler with a body the parser refused', () => {
-  it('answers 400 for a body that will not parse', async () => {
+  it('answers 400 for a body that will not parse, without logging it', async () => {
+    const warn = vi.spyOn(logger, 'warn').mockImplementation(() => {})
+
     const response = await api()
       .post('/api/auth/login')
       .set('Content-Type', 'application/json')
-      .send('{"email":')
+      .send('{"password":"hunter2"')
 
     expect(response.status).toBe(400)
     expect(response.body).toEqual({ error: 'Bad Request' })
+
+    // A parse failure carries the raw body on the error — a login's password
+    // included — so nothing of it may reach the response or the log. The
+    // handler logs only the status and the error kind.
+    expect(JSON.stringify(response.body)).not.toContain('hunter2')
+    expect(warn).toHaveBeenCalledTimes(1)
+    expect(warn.mock.calls[0]?.[1]).toBe('Request rejected: unreadable body')
+    expect(warn.mock.calls[0]?.[0]).toMatchObject({ status: 400 })
+    expect(JSON.stringify(warn.mock.calls[0])).not.toContain('hunter2')
+    expect(JSON.stringify(warn.mock.calls[0])).not.toContain('password')
   })
 
   it('answers 413 for a body over the one megabyte limit', async () => {
@@ -71,21 +84,10 @@ describe('errorHandler with a body the parser refused', () => {
     expect(response.status).toBe(415)
     expect(response.body).toEqual({ error: 'Unsupported Media Type' })
   })
-
-  // A parse failure carries the raw body on the error, which for a login holds
-  // the submitted password, so nothing of it may reach the response.
-  it('never echoes the rejected body back', async () => {
-    const response = await api()
-      .post('/api/auth/login')
-      .set('Content-Type', 'application/json')
-      .send('{"password":"hunter2"')
-
-    expect(JSON.stringify(response.body)).not.toContain('hunter2')
-  })
 })
 
 describe('errorHandler with anything else', () => {
-  it('answers a generic 500 for a failure raised while handling a request', async () => {
+  it('answers a generic 500 and leaves the session cookie in place', async () => {
     const session = await registeredSession({ email: 'fault@example.com' })
     vi.spyOn(RevokedToken, 'updateOne').mockRejectedValueOnce(
       new Error('mongodb://secret-host:27017 refused the connection'),
@@ -97,6 +99,14 @@ describe('errorHandler with anything else', () => {
 
     expect(response.status).toBe(500)
     expect(response.body).toEqual(SERVER_FAULT)
+
+    // A 500 is a fault, not a logout: no clearing cookie may be sent, and the
+    // original session has to keep working so a client does not throw it away.
+    expect(response.headers['set-cookie']).toBeUndefined()
+    const after = await session.agent.get('/api/auth/me')
+
+    expect(after.status).toBe(200)
+    expect(after.body.user.id).toBe(session.user.id)
   })
 
   it('leaks neither the message nor a stack trace', () => {

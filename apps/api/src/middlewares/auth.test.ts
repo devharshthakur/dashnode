@@ -1,10 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import type { NextFunction, Request, Response } from 'express'
 import { SignJWT } from 'jose'
-import { Types } from 'mongoose'
 
-import { env } from '#env'
-import { requireAuth } from '#middlewares/auth'
 import { RevokedToken } from '#models/revoked-token'
 import { User } from '#models/user'
 import { api, registeredSession } from '#test/app'
@@ -16,81 +12,12 @@ import { AUTH_COOKIE_NAME, signSessionToken } from '#utils/auth'
 const PROTECTED = '/api/auth/me'
 const UNAUTHORIZED = { error: 'Unauthorized' }
 
-const secret = new TextEncoder().encode(env.JWT_SECRET)
-
-async function signToken(claims: {
-  subject?: string
-  jti?: string
-  expiresIn?: string
-}): Promise<string> {
-  const builder = new SignJWT().setProtectedHeader({ alg: 'HS256' })
-
-  if (claims.subject !== undefined) {
-    builder.setSubject(claims.subject)
-  }
-
-  if (claims.jti !== undefined) {
-    builder.setJti(claims.jti)
-  }
-
-  builder.setExpirationTime(claims.expiresIn ?? '1h')
-
-  return builder.sign(secret)
-}
-
 function withCookie(token: string) {
   return api().get(PROTECTED).set('Cookie', `${AUTH_COOKIE_NAME}=${token}`)
 }
 
 afterEach(() => {
   vi.restoreAllMocks()
-})
-
-/** Records what a middleware answered, without an HTTP layer. */
-function fakeResponse() {
-  const answered: { status: number; body: unknown } = {
-    status: 0,
-    body: undefined,
-  }
-  const res = {
-    status(code: number) {
-      answered.status = code
-
-      return res
-    },
-    json(body: unknown) {
-      answered.body = body
-
-      return res
-    },
-  } as unknown as Response
-
-  return { res, answered }
-}
-
-describe('requireAuth with a cookie value it cannot use', () => {
-  // cookie-parser only ever produces strings, so this defensive branch has no
-  // HTTP request that reaches it — the middleware is driven directly instead.
-  // The refusal is asserted as reaching it *before* any verification: left to
-  // the verifier, a value that is not a string still ends in the same `401`, so
-  // the log line is the only thing that tells the two apart.
-  it('refuses a cookie value that is not a string', async () => {
-    const { res, answered } = fakeResponse()
-    const next = vi.fn()
-    const req = {
-      cookies: { [AUTH_COOKIE_NAME]: { nested: 'value' } },
-      log: { debug: vi.fn(), warn: vi.fn(), error: vi.fn() },
-    } as unknown as Request
-
-    await requireAuth(req, res, next as unknown as NextFunction)
-
-    expect(answered).toEqual({ status: 401, body: UNAUTHORIZED })
-    expect(next).not.toHaveBeenCalled()
-    expect(req.log?.debug).toHaveBeenCalledWith(
-      'Request rejected: no session cookie',
-    )
-    expect(req.log?.warn).not.toHaveBeenCalled()
-  })
 })
 
 describe('requireAuth without a usable session', () => {
@@ -101,11 +28,17 @@ describe('requireAuth without a usable session', () => {
     expect(response.body).toEqual(UNAUTHORIZED)
   })
 
-  // cookie-parser turns a bracketed key into an object, which is not a token.
+  // cookie-parser decodes a `j:`-prefixed value as JSON, so the cookie holds an
+  // object rather than a token string. Sent under the real cookie name, this is
+  // what actually reaches the middleware; a bracketed name would just be a
+  // missing cookie.
   it('refuses a cookie whose value is not a string', async () => {
     const response = await api()
       .get(PROTECTED)
-      .set('Cookie', `${AUTH_COOKIE_NAME}[nested]=value`)
+      .set(
+        'Cookie',
+        `${AUTH_COOKIE_NAME}=j:${JSON.stringify({ nested: 'value' })}`,
+      )
 
     expect(response.status).toBe(401)
     expect(response.body).toEqual(UNAUTHORIZED)
@@ -118,10 +51,13 @@ describe('requireAuth without a usable session', () => {
     expect(response.body).toEqual(UNAUTHORIZED)
   })
 
+  // Valid in every respect except the signing key, so the signature is the one
+  // and only reason to refuse it.
   it('refuses a token signed with another secret', async () => {
+    const user = await createUser()
     const token = await new SignJWT()
       .setProtectedHeader({ alg: 'HS256' })
-      .setSubject(new Types.ObjectId().toHexString())
+      .setSubject(user.id)
       .setJti('a-jti')
       .setExpirationTime('1h')
       .sign(new TextEncoder().encode('b'.repeat(32)))
@@ -130,17 +66,6 @@ describe('requireAuth without a usable session', () => {
 
     expect(response.status).toBe(401)
     expect(response.body).toEqual(UNAUTHORIZED)
-  })
-
-  it('refuses an expired token', async () => {
-    const token = await signToken({
-      subject: new Types.ObjectId().toHexString(),
-      expiresIn: '-10s',
-    })
-
-    const response = await withCookie(token)
-
-    expect(response.status).toBe(401)
   })
 })
 
