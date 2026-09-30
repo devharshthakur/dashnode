@@ -3,12 +3,15 @@ import { SignJWT } from 'jose'
 
 import { RevokedToken } from '#models/revoked-token'
 import { User } from '#models/user'
-import { api, registeredSession } from '#test/app'
-import { createUser, TEST_PASSWORD } from '#test/factories'
+import { api } from '#test/app'
+import { createUser } from '#test/factories'
 import { AUTH_COOKIE_NAME, signSessionToken } from '#utils/auth'
 
 // `GET /api/auth/me` is the shortest protected route: `requireAuth` either
 // answers it or lets it run, so the middleware is what is under test here.
+// Valid sessions, replay, and deleted users are exercised through the route
+// suites; this file covers the middleware's own rejection reasons and its
+// database-failure behavior.
 const PROTECTED = '/api/auth/me'
 const UNAUTHORIZED = { error: 'Unauthorized' }
 
@@ -61,63 +64,6 @@ describe('requireAuth without a usable session', () => {
       .setJti('a-jti')
       .setExpirationTime('1h')
       .sign(new TextEncoder().encode('b'.repeat(32)))
-
-    const response = await withCookie(token)
-
-    expect(response.status).toBe(401)
-    expect(response.body).toEqual(UNAUTHORIZED)
-  })
-})
-
-describe('requireAuth with a valid token', () => {
-  it('lets the request through and attaches a hash-free user', async () => {
-    const user = await createUser()
-    const token = await signSessionToken(user.id)
-
-    const response = await withCookie(token)
-
-    expect(response.status).toBe(200)
-    expect(response.body.user).toMatchObject({ id: user.id })
-    expect(response.body.user).not.toHaveProperty('password')
-  })
-
-  it('accepts the cookie a registration set, without a separate login', async () => {
-    const session = await registeredSession({
-      email: 'cookie@example.com',
-      password: TEST_PASSWORD,
-    })
-
-    const response = await session.agent.get(PROTECTED)
-
-    expect(response.status).toBe(200)
-    expect(response.body.user.id).toBe(session.user.id)
-  })
-})
-
-describe('requireAuth with a revoked session', () => {
-  // The user still exists here, so only the blacklist can refuse the request.
-  it('refuses a token the logout route revoked', async () => {
-    const session = await registeredSession({ email: 'logout@example.com' })
-    const token = session.token
-
-    const logout = await session.agent
-      .post('/api/auth/logout')
-      .set('Origin', 'http://localhost:5173')
-    expect(logout.status).toBe(200)
-
-    const response = await withCookie(token)
-
-    expect(response.status).toBe(401)
-    expect(response.body).toEqual(UNAUTHORIZED)
-  })
-
-  // The mirror image: the token verifies and is not revoked, but there is no
-  // user behind it any more.
-  it('refuses a valid token whose user has been deleted', async () => {
-    const user = await createUser()
-    const token = await signSessionToken(user.id)
-
-    await User.deleteOne({ _id: user._id })
 
     const response = await withCookie(token)
 

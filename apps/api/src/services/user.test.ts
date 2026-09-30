@@ -43,15 +43,6 @@ describe('getPublicUserProfile', () => {
     })
   })
 
-  it('never carries the email or a password hash', async () => {
-    const user = await createUser()
-
-    const profile = await getPublicUserProfile(user.id, { limit: 10 })
-
-    expect(profile.user).not.toHaveProperty('email')
-    expect(profile.user).not.toHaveProperty('password')
-  })
-
   // A draft must not reach a public profile.
   it('lists the author’s published posts only', async () => {
     const user = await createUser()

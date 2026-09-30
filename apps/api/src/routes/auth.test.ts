@@ -49,7 +49,7 @@ function authCookie(setCookie: string | string[] | undefined): {
 }
 
 describe('POST /api/auth/register', () => {
-  it('creates the account and answers 201 with its public shape', async () => {
+  it('creates the account, sets the cookie, and authenticates the follow-up', async () => {
     const response = await api()
       .post('/api/auth/register')
       .set('Origin', ORIGIN)
@@ -66,20 +66,21 @@ describe('POST /api/auth/register', () => {
       'updatedAt',
     ])
     expect(response.body.user).not.toHaveProperty('password')
-  })
 
-  it('sets the session cookie where JavaScript cannot read it', async () => {
-    const response = await api()
-      .post('/api/auth/register')
-      .set('Origin', ORIGIN)
-      .send(CREDENTIALS)
-
+    // The response is itself a session: the cookie is HttpOnly and the next
+    // request carries it, so a client never logs in right after signing up.
     const { value, attributes } = authCookie(response.headers['set-cookie'])
-
     expect(value.split('.')).toHaveLength(3)
     expect(attributes.get('httponly')).toBeDefined()
     expect(attributes.get('path')).toBe('/')
     expect(attributes.get('samesite')).toBe('Lax')
+
+    const followUp = await api()
+      .get('/api/auth/me')
+      .set('Cookie', `${AUTH_COOKIE_NAME}=${value}`)
+
+    expect(followUp.status).toBe(200)
+    expect(followUp.body.user.id).toBe(response.body.user.id)
   })
 
   it.each([
@@ -137,17 +138,6 @@ describe('POST /api/auth/register', () => {
       .send({ ...CREDENTIALS, email: 'ADA@Example.com' })
 
     expect(response.status).toBe(409)
-  })
-
-  // The registration response is itself a session, so a client never has to log
-  // in right after signing up.
-  it('authenticates the next request with the cookie it set', async () => {
-    const session = await registeredSession(CREDENTIALS)
-
-    const response = await session.agent.get('/api/auth/me')
-
-    expect(response.status).toBe(200)
-    expect(response.body.user.id).toBe(session.user.id)
   })
 })
 
@@ -260,7 +250,7 @@ describe('GET /api/auth/me', () => {
 })
 
 describe('POST /api/auth/logout', () => {
-  it('clears the session cookie with the attributes it was set with', async () => {
+  it('clears the cookie and refuses the revoked token on replay', async () => {
     const session = await registeredSession({ email: 'clear@example.com' })
 
     const response = await session.agent
@@ -273,14 +263,9 @@ describe('POST /api/auth/logout', () => {
     expect(value).toBe('')
     expect(attributes.get('path')).toBe('/')
     expect(attributes.get('samesite')).toBe('Lax')
-  })
 
-  // The whole point of the blacklist: the cookie is still on the client, and it
-  // has to stop working. A replay, not a stub.
-  it('refuses the session token once it has been revoked', async () => {
-    const session = await registeredSession({ email: 'replay@example.com' })
-
-    await session.agent.post('/api/auth/logout').set('Origin', ORIGIN)
+    // The whole point of the blacklist: the cookie is still on the client, and
+    // it has to stop working. A replay, not a stub.
     const replay = await api().get('/api/auth/me').set('Cookie', session.cookie)
 
     expect(replay.status).toBe(401)
@@ -376,6 +361,11 @@ describe('GET /api/health', () => {
     expect(response.status).toBe(200)
     expect(response.body.status).toBe('ok')
     expect(typeof response.body.uptime).toBe('number')
+    // The timestamp is an ISO string a client can pass to `Date.parse`, not a
+    // bare number of milliseconds.
     expect(Number.isNaN(Date.parse(response.body.timestamp))).toBe(false)
+    expect(response.body.timestamp).toBe(
+      new Date(response.body.timestamp).toISOString(),
+    )
   })
 })

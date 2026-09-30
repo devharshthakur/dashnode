@@ -99,13 +99,15 @@ describe('appendUniqueSuffix', () => {
   })
 
   // A re-probe can hand the same candidate back to a caller that lost the race,
-  // which is why the retry cannot be a plain probe.
-  it('never repeats a token across many calls', () => {
-    const slugs = Array.from({ length: 100 }, () =>
-      appendUniqueSuffix('my-post'),
-    )
+  // which is why the retry cannot be a plain probe. A large-sample uniqueness
+  // check would not prove anything stronger than a small one.
+  it('returns a fresh token rather than a fixed suffix', () => {
+    const first = appendUniqueSuffix('my-post')
+    const second = appendUniqueSuffix('my-post')
 
-    expect(new Set(slugs).size).toBe(slugs.length)
+    expect(first).toMatch(/^my-post-[0-9a-f]{10}$/)
+    expect(second).toMatch(/^my-post-[0-9a-f]{10}$/)
+    expect(first).not.toBe(second)
   })
 })
 

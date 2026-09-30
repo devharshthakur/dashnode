@@ -47,10 +47,15 @@ afterEach(() => {
 })
 
 describe('signSessionToken', () => {
-  it('produces a token that verifies with the user id as its subject', async () => {
-    const session = await verifySessionToken(await signSessionToken(USER_ID))
+  it('signs a token that verifies with its subject and a fresh id', async () => {
+    const first = await verifySessionToken(await signSessionToken(USER_ID))
+    const second = await verifySessionToken(await signSessionToken(USER_ID))
 
-    expect(session.userId).toBe(USER_ID)
+    expect(first.userId).toBe(USER_ID)
+    expect(second.userId).toBe(USER_ID)
+    // The revocation key is the `jti`, so a shared one would let one logout
+    // kill every session the user has open.
+    expect(first.jti).not.toBe(second.jti)
   })
 
   // `setIssuedAt` records whole seconds, so the expiry lands up to a second
@@ -65,15 +70,6 @@ describe('signSessionToken', () => {
     expect(session.expiresAt.getTime()).toBeLessThanOrEqual(
       Date.now() + SESSION_TTL_MS,
     )
-  })
-
-  // The revocation key is the `jti`, so a shared one would let one logout kill
-  // every session the user has open.
-  it('gives every token its own id', async () => {
-    const first = await verifySessionToken(await signSessionToken(USER_ID))
-    const second = await verifySessionToken(await signSessionToken(USER_ID))
-
-    expect(first.jti).not.toBe(second.jti)
   })
 })
 
@@ -178,33 +174,23 @@ function fakeResponse() {
 }
 
 describe('setAuthCookie', () => {
-  it('stores the token where JavaScript cannot read it', () => {
+  it('sets the cookie with its full contract outside production', () => {
     const { res, set } = fakeResponse()
 
     setAuthCookie(res, 'a-token')
 
     expect(set).toHaveLength(1)
-    expect(set[0]?.name).toBe(AUTH_COOKIE_NAME)
-    expect(set[0]?.value).toBe('a-token')
-    expect(set[0]?.options?.httpOnly).toBe(true)
-    expect(set[0]?.options?.path).toBe('/')
-  })
-
-  it('keeps seven days of lifetime', () => {
-    const { res, set } = fakeResponse()
-
-    setAuthCookie(res, 'a-token')
-
-    expect(set[0]?.options?.maxAge).toBe(SESSION_TTL_MS)
-  })
-
-  it('stays Lax and insecure outside production', () => {
-    const { res, set } = fakeResponse()
-
-    setAuthCookie(res, 'a-token')
-
-    expect(set[0]?.options?.secure).toBe(false)
-    expect(set[0]?.options?.sameSite).toBe('lax')
+    expect(set[0]).toMatchObject({
+      name: AUTH_COOKIE_NAME,
+      value: 'a-token',
+      options: {
+        httpOnly: true,
+        secure: false,
+        sameSite: 'lax',
+        path: '/',
+        maxAge: SESSION_TTL_MS,
+      },
+    })
   })
 
   it('needs an explicit secure flag in production, where the web app is cross-origin', async () => {
