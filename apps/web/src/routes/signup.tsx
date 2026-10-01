@@ -1,10 +1,5 @@
 import { useForm } from '@tanstack/react-form'
-import {
-  createFileRoute,
-  Link,
-  redirect,
-  useNavigate,
-} from '@tanstack/react-router'
+import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
 import { FeatherIcon } from 'lucide-react'
 
 import { Alert, AlertDescription } from '#/components/ui/alert'
@@ -19,19 +14,12 @@ import {
 import { Input } from '#/components/ui/input'
 import { Spinner } from '#/components/ui/spinner'
 import { signupSchema } from '#/lib/schemas/auth'
-import { useSignup, sessionQueryOptions } from '#/lib/session'
+import { useSignup } from '#/lib/session'
+import { requireGuest } from '#/lib/session-guard'
 
 export const Route = createFileRoute('/signup')({
   ssr: false,
-  beforeLoad: async ({ context }) => {
-    const user = await context.queryClient
-      .query({ ...sessionQueryOptions, staleTime: 'static' })
-      .catch(() => null)
-
-    if (user) {
-      throw redirect({ to: '/', replace: true })
-    }
-  },
+  beforeLoad: requireGuest,
   component: SignupPage,
   head: () => ({ meta: [{ title: 'Create an account — DashNode' }] }),
 })
