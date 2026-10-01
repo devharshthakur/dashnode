@@ -22,14 +22,14 @@ Node >= 24 (`.nvmrc` pins 24.21.0) and pnpm 12.5.1 (`packageManager`, with `engi
 - `pnpm test` — run the API test suite. No Docker, no `apps/api/.env`, and no running database: the harness starts its own in-memory replica set. The first install downloads a `mongod` binary, which needs network access.
 - `cp apps/api/.env.example apps/api/.env` — first run; then set `JWT_SECRET` to a private value of 32+ characters (`openssl rand -base64 32`).
 - `pnpm --filter api db:up` — start local MongoDB (single-node replica set). It must be running before the API, and it must stay a replica set because post/tag writes use transactions.
-- `pnpm dev` — run all apps: web at `http://localhost:5173`, API at `http://localhost:3001`.
+- `pnpm dev` — run all apps: web at `http://localhost:5173`, API at `http://localhost:8000`.
 - `pnpm --filter api dev` / `pnpm --filter web dev` — run one app; both start without a prior build.
 - `pnpm build` — build all apps (API via tsdown to `apps/api/build/`, web via Vite).
 - `pnpm --filter api start` — run the compiled API (`apps/api/build/index.mjs`).
 - `pnpm --filter web generate-routes` — regenerate `apps/web/src/routeTree.gen.ts` after adding or removing route files.
 - `pnpm --filter api db:down` / `db:logs` — stop MongoDB / follow its logs.
 
-Verify a running API with `curl http://localhost:3001/api/health`.
+Verify a running API with `curl http://localhost:8000/api/health`.
 
 ## Task → starting path
 

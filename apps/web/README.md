@@ -11,7 +11,7 @@ The browser-facing application lives here: a DashNode landing page with login an
 
 The session is a signed JWT in an HttpOnly cookie, so JavaScript cannot read it. The conditional account actions come from `GET /api/auth/me`, which `src/lib/session.ts` wraps in a TanStack Query hook; a `401` means "signed out". The guard on `/dashboard` is a user-experience aid only — the API authorizes every protected request.
 
-The browser calls the API directly with credentials, and the client defaults to `http://localhost:3001/api`. Set `VITE_API_URL` in `apps/web/.env` to point at another API; that origin must also appear in the API's `CORS_ORIGIN`.
+The browser calls the API directly with credentials, and the client defaults to `http://localhost:8000/api`. Set `VITE_API_URL` in `apps/web/.env` to point at another API; that origin must also appear in the API's `CORS_ORIGIN`.
 
 Start the web app from the repository root:
 

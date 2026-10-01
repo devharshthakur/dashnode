@@ -12,7 +12,7 @@ describe('envSchema', () => {
   it('supplies every value the schema has a default for', () => {
     expect(envSchema.parse({ JWT_SECRET: SECRET })).toMatchObject({
       NODE_ENV: 'development',
-      PORT: 3001,
+      PORT: 8000,
       LOG_LEVEL: 'info',
       MONGO_URI: 'mongodb://localhost:27017/hashnode',
       CORS_ORIGIN: 'http://localhost:5173',
