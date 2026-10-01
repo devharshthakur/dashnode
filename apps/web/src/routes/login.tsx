@@ -22,16 +22,10 @@ import { loginSchema } from '#/lib/schemas/auth'
 import { useLogin, sessionQueryOptions } from '#/lib/session'
 
 export const Route = createFileRoute('/login')({
-  // The session cookie belongs to the API origin, so the server cannot see it
-  // and would resolve this guard to "signed out". Keeping the check on the
-  // client is what makes it correct after a hard refresh.
   ssr: false,
   beforeLoad: async ({ context }) => {
-    // A guard is a user-experience aid, not an authorization boundary: an
-    // unreachable API fails open rather than locking the visitor out, and the
-    // API still verifies the session cookie when the form is submitted.
     const user = await context.queryClient
-      .ensureQueryData(sessionQueryOptions)
+      .query({ ...sessionQueryOptions, staleTime: 'static' })
       .catch(() => null)
 
     if (user) {

@@ -47,11 +47,6 @@ async function fetchSession(): Promise<SessionUser | null> {
   }
 }
 
-/**
- * The session query, shared by every reader of it: components through
- * {@link useSession} and route guards through `ensureQueryData`, so a guard and
- * the page it protects can never disagree about who is signed in.
- */
 export const sessionQueryOptions = queryOptions({
   queryKey: sessionQueryKey,
   queryFn: fetchSession,
