@@ -1,14 +1,11 @@
 import axios from 'axios'
 import type { AxiosError, AxiosRequestConfig } from 'axios'
 
-// Base URL of the Express API. Defaults to the local development server; set
-// `VITE_API_URL` (for example in `apps/web/.env`) to point at another API.
-const configuredApiUrl: unknown = import.meta.env.VITE_API_URL
+import { env } from '#/env'
 
-export const API_BASE_URL =
-  typeof configuredApiUrl === 'string' && configuredApiUrl.length > 0
-    ? configuredApiUrl
-    : 'http://localhost:8000/api'
+// Base URL of the Express API, validated at startup by `src/env.ts`. Set
+// `VITE_API_URL` (for example in `apps/web/.env`) to point at another API.
+export const API_BASE_URL = env.VITE_API_URL
 
 interface ApiErrorBody {
   error?: unknown
