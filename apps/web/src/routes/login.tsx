@@ -13,7 +13,7 @@ import {
 } from '#/components/ui/field'
 import { Input } from '#/components/ui/input'
 import { Spinner } from '#/components/ui/spinner'
-import { loginSchema } from '#/lib/auth-schemas'
+import { loginSchema } from '#/lib/schemas/auth'
 import { useLogin } from '#/lib/session'
 
 export const Route = createFileRoute('/login')({
