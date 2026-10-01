@@ -1,4 +1,9 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import {
+  queryOptions,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from '@tanstack/react-query'
 
 import { ApiError, apiRequest } from '#/lib/api'
 
@@ -42,14 +47,21 @@ async function fetchSession(): Promise<SessionUser | null> {
   }
 }
 
+/**
+ * The session query, shared by every reader of it: components through
+ * {@link useSession} and route guards through `ensureQueryData`, so a guard and
+ * the page it protects can never disagree about who is signed in.
+ */
+export const sessionQueryOptions = queryOptions({
+  queryKey: sessionQueryKey,
+  queryFn: fetchSession,
+  retry: false,
+  staleTime: 30_000,
+})
+
 /** Reads the current session: the signed-in user, or `null` when signed out. */
 export function useSession() {
-  return useQuery({
-    queryKey: sessionQueryKey,
-    queryFn: fetchSession,
-    retry: false,
-    staleTime: 30_000,
-  })
+  return useQuery(sessionQueryOptions)
 }
 
 export function useLogin() {
