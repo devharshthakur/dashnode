@@ -1,13 +1,19 @@
-import { createFileRoute } from '@tanstack/react-router'
-import { CompassIcon, PenLineIcon, TagsIcon } from 'lucide-react'
+import { createFileRoute, Link } from '@tanstack/react-router'
+import {
+  ArrowRightIcon,
+  CompassIcon,
+  PenLineIcon,
+  TagsIcon,
+} from 'lucide-react'
 
-import { AuthActions } from '#/components/auth-actions'
+import { Button } from '#/components/ui/button'
 import {
   Card,
   CardDescription,
   CardHeader,
   CardTitle,
 } from '#/components/ui/card'
+import { useSession } from '#/lib/session'
 
 export const Route = createFileRoute('/')({
   component: LandingPage,
@@ -45,6 +51,8 @@ const features = [
 ]
 
 function LandingPage() {
+  const { data: user } = useSession()
+
   return (
     <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col px-4">
       <section className="py-16 md:py-24">
@@ -60,8 +68,41 @@ function LandingPage() {
             technical stories, tag them by technology, and share them on a
             public developer feed.
           </p>
+          {/*
+           * Signed-out visitors get Login and Sign up; a visitor with a
+           * session gets a single route into the dashboard. While the session
+           * is still loading the signed-out actions are shown, which is also
+           * the correct answer when the API cannot be reached.
+           */}
           <div className="flex flex-wrap items-center gap-3">
-            <AuthActions size="lg" />
+            {user ? (
+              <Button
+                size="lg"
+                render={<Link to="/dashboard" />}
+                nativeButton={false}
+              >
+                Go to dashboard
+                <ArrowRightIcon data-icon="inline-end" />
+              </Button>
+            ) : (
+              <>
+                <Button
+                  size="lg"
+                  variant="outline"
+                  render={<Link to="/login" />}
+                  nativeButton={false}
+                >
+                  Login
+                </Button>
+                <Button
+                  size="lg"
+                  render={<Link to="/signup" />}
+                  nativeButton={false}
+                >
+                  Sign up
+                </Button>
+              </>
+            )}
           </div>
         </div>
       </section>
