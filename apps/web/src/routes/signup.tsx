@@ -15,8 +15,11 @@ import { Input } from '#/components/ui/input'
 import { Spinner } from '#/components/ui/spinner'
 import { signupSchema } from '#/lib/schemas/auth'
 import { useSignup } from '#/lib/session'
+import { requireGuest } from '#/lib/session-guard'
 
 export const Route = createFileRoute('/signup')({
+  ssr: false,
+  beforeLoad: requireGuest,
   component: SignupPage,
   head: () => ({ meta: [{ title: 'Create an account — DashNode' }] }),
 })
@@ -28,15 +31,10 @@ function SignupPage() {
   const form = useForm({
     defaultValues: { name: '', email: '', password: '' },
     validators: { onSubmit: signupSchema },
-    onSubmit: async ({ value }) => {
-      try {
-        await signup.mutateAsync(value)
-        await navigate({ to: '/dashboard' })
-      } catch {
-        // TanStack Query keeps the failure on `signup.error`, which the alert
-        // below renders; swallowing it here keeps the rejection from escaping
-        // `handleSubmit`.
-      }
+    onSubmit: ({ value }) => {
+      signup.mutate(value, {
+        onSuccess: () => void navigate({ to: '/dashboard' }),
+      })
     },
   })
 
@@ -160,12 +158,16 @@ function SignupPage() {
           <Field>
             <form.Subscribe
               selector={(state) => state.isSubmitting}
-              children={(isSubmitting) => (
-                <Button type="submit" disabled={isSubmitting}>
-                  {isSubmitting ? <Spinner data-icon="inline-start" /> : null}
-                  Create account
-                </Button>
-              )}
+              children={(isSubmitting) => {
+                const isBusy = isSubmitting || signup.isPending
+
+                return (
+                  <Button type="submit" disabled={isBusy}>
+                    {isBusy ? <Spinner data-icon="inline-start" /> : null}
+                    Create account
+                  </Button>
+                )
+              }}
             />
           </Field>
         </FieldGroup>

@@ -15,8 +15,11 @@ import { Input } from '#/components/ui/input'
 import { Spinner } from '#/components/ui/spinner'
 import { loginSchema } from '#/lib/schemas/auth'
 import { useLogin } from '#/lib/session'
+import { requireGuest } from '#/lib/session-guard'
 
 export const Route = createFileRoute('/login')({
+  ssr: false,
+  beforeLoad: requireGuest,
   component: LoginPage,
   head: () => ({ meta: [{ title: 'Log in — DashNode' }] }),
 })
@@ -28,15 +31,10 @@ function LoginPage() {
   const form = useForm({
     defaultValues: { email: '', password: '' },
     validators: { onSubmit: loginSchema },
-    onSubmit: async ({ value }) => {
-      try {
-        await login.mutateAsync(value)
-        await navigate({ to: '/dashboard' })
-      } catch {
-        // TanStack Query keeps the failure on `login.error`, which the alert
-        // below renders; swallowing it here keeps the rejection from escaping
-        // `handleSubmit`.
-      }
+    onSubmit: ({ value }) => {
+      login.mutate(value, {
+        onSuccess: () => void navigate({ to: '/dashboard' }),
+      })
     },
   })
 
@@ -130,12 +128,16 @@ function LoginPage() {
           <Field>
             <form.Subscribe
               selector={(state) => state.isSubmitting}
-              children={(isSubmitting) => (
-                <Button type="submit" disabled={isSubmitting}>
-                  {isSubmitting ? <Spinner data-icon="inline-start" /> : null}
-                  Log in
-                </Button>
-              )}
+              children={(isSubmitting) => {
+                const isBusy = isSubmitting || login.isPending
+
+                return (
+                  <Button type="submit" disabled={isBusy}>
+                    {isBusy ? <Spinner data-icon="inline-start" /> : null}
+                    Log in
+                  </Button>
+                )
+              }}
             />
           </Field>
         </FieldGroup>
