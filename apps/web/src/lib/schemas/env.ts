@@ -16,7 +16,7 @@ function emptyStringAsUndefined(value: unknown): unknown {
 export const envSchema = z.object({
   VITE_API_URL: z.preprocess(
     emptyStringAsUndefined,
-    z.url().default('http://localhost:8000/api'),
+    z.url().default('http://localhost:8000'),
   ),
 })
 

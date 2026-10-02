@@ -5,13 +5,13 @@ The browser-facing application lives here: a DashNode landing page with login an
 | Route        | Purpose                                                                                   |
 | ------------ | ----------------------------------------------------------------------------------------- |
 | `/`          | DashNode landing page. Shows Login and Sign up, or Go to dashboard when a session exists. |
-| `/login`     | Signs in through `POST /api/auth/login`.                                                  |
-| `/signup`    | Creates an account through `POST /api/auth/register`.                                     |
+| `/login`     | Signs in through `POST /auth/login`.                                                      |
+| `/signup`    | Creates an account through `POST /auth/register`.                                         |
 | `/dashboard` | The signed-in user's landing spot, with logout.                                           |
 
-The session is a signed JWT in an HttpOnly cookie, so JavaScript cannot read it. The conditional account actions come from `GET /api/auth/me`, which `src/lib/session.ts` wraps in a TanStack Query hook; a `401` means "signed out". The guard on `/dashboard` is a user-experience aid only — the API authorizes every protected request.
+The session is a signed JWT in an HttpOnly cookie, so JavaScript cannot read it. The conditional account actions come from `GET /auth/me`, which `src/lib/session.ts` wraps in a TanStack Query hook; a `401` means "signed out". The guard on `/dashboard` is a user-experience aid only — the API authorizes every protected request.
 
-The browser calls the API directly with credentials, and the client defaults to `http://localhost:8000/api`. Set `VITE_API_URL` in `apps/web/.env` (see `apps/web/.env.example`) to point at another API; that origin must also appear in the API's `CORS_ORIGIN`. `src/env.ts` validates it through the Zod schema in `src/lib/schemas/env.ts` and fails at startup when the value is not a URL.
+The browser calls the API directly with credentials, and the client defaults to `http://localhost:8000`. Set `VITE_API_URL` in `apps/web/.env` (see `apps/web/.env.example`) to point at another API; that origin must also appear in the API's `CORS_ORIGIN`. `src/env.ts` validates it through the Zod schema in `src/lib/schemas/env.ts` and fails at startup when the value is not a URL.
 
 Start the web app from the repository root:
 

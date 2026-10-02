@@ -7,7 +7,7 @@ import {
 
 import { ApiError, apiRequest } from '#/lib/api'
 
-/** The signed-in account, as `GET /api/auth/me` returns it. */
+/** The signed-in account, as `GET /auth/me` returns it. */
 export interface SessionUser {
   id: string
   name: string
