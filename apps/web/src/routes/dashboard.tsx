@@ -17,8 +17,7 @@ import { useLogout } from '#/lib/session'
 
 export const Route = createFileRoute('/dashboard')({
   beforeLoad: () => authGaurd('auth'),
-  // The page is rendered from the session cookie, so no shared cache may keep a
-  // copy of it.
+  // Rendered from the session cookie, so shared caches must not keep a copy.
   headers: () => ({ 'Cache-Control': 'private, no-store' }),
   errorComponent: SessionVerificationError,
   component: DashboardPage,
@@ -29,14 +28,12 @@ function DashboardPage() {
   const navigate = useNavigate()
   const router = useRouter()
   const logout = useLogout()
-  // The guard verified this user before the page rendered, so there is nothing
-  // to wait for and no signed-out state to recover from here.
+  // Verified by the guard before render, so there is no signed-out state here.
   const { user } = Route.useRouteContext()
 
   if (!user) {
-    // Unreachable: the guard above redirects anyone without a session. The
-    // context types `user` as nullable because the same guard guards
-    // guest-only routes too, where there is no user to hand over.
+    // Unreachable: the guard redirects anyone without a session. The type is
+    // nullable because the same guard also serves guest-only routes.
     return null
   }
 
@@ -59,9 +56,9 @@ function DashboardPage() {
             onClick={() => {
               logout.mutate(undefined, {
                 onSuccess: async () => {
-                  // Navigating first, then invalidating, is what keeps the two
-                  // from racing: the guest guard on the way out would otherwise
-                  // see the cleared session and redirect before this finishes.
+                  // Navigate before invalidating so the two do not race: the
+                  // guest guard would otherwise see the cleared session and
+                  // redirect mid-navigation.
                   await navigate({ to: '/', replace: true })
                   await router.invalidate()
                 },

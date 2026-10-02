@@ -20,10 +20,9 @@ import {
 
 import type { SessionUser } from '#/lib/session'
 
-// The real module pulls in Start's runtime, which only resolves inside a running
-// server. Standing in for it keeps these tests to the two things that matter
-// here: what goes out to the API, and how its answer comes back. `vi.mock` is
-// hoisted above this import, so the module under test still sees the stand-in.
+// The real Start runtime only resolves inside a running server, so mock the two
+// helpers the module reads. `vi.mock` is hoisted above the import, so the module
+// under test still sees the stand-in.
 const requestUrl = { value: 'https://dashnode.example/api/auth/me' }
 const requestHeaders = new Headers()
 
@@ -154,8 +153,8 @@ describe('forwardApiRequest', () => {
   })
 
   it('relays each Set-Cookie on its own line, with the Domain dropped', async () => {
-    // Built by hand rather than through `json`, because folding the cookies into
-    // a plain object is exactly the mistake that would hide a broken relay.
+    // Built by hand rather than via `json`: folding cookies into one value is
+    // exactly the bug that would hide a broken relay.
     stubApi(() => {
       const headers = new Headers({ 'Content-Type': 'application/json' })
       headers.append(
@@ -215,8 +214,8 @@ describe('forwardApiRequest', () => {
   })
 
   it('forwards a HEAD read as the read it is, with no body to send', async () => {
-    // The route file claims no `HEAD` handler of its own: Start answers it with
-    // the `GET` one, so this is the call that has to stay a read.
+    // The route claims no `HEAD` handler: Start answers it with GET, so this
+    // call has to stay a read with no body.
     stubApi(() => new Response(null, { status: 200 }))
 
     const response = await forwardApiRequest(
@@ -230,8 +229,8 @@ describe('forwardApiRequest', () => {
   })
 
   it('passes a bodyless status through without inventing a body for it', async () => {
-    // `Response` refuses a body on these statuses, and the API sends none, so
-    // the upstream stream must be dropped rather than forwarded into a throw.
+    // `Response` refuses a body on these statuses and the API sends none, so
+    // drop the upstream stream rather than forward it into a throw.
     for (const status of [204, 205, 304]) {
       stubApi(() => new Response(null, { status }))
 
@@ -351,8 +350,8 @@ describe('getCurrentUserFromRequest', () => {
   })
 })
 
-// The rules below are the ones `forwardApiRequest` composes. They take plain
-// values rather than a runtime request object, so each is checked on its own.
+// The pure rules `forwardApiRequest` composes. They take plain values, not a
+// request object, so each is checked on its own.
 
 function browserRequest(
   method: string,
@@ -449,9 +448,9 @@ describe('toUpstreamPathname', () => {
   })
 
   it('can only ever produce a plain path under the origin root', () => {
-    // Empty segments normalize away, which is what `/api//auth/me` and
-    // `/api/auth/me` mean the same thing — but the result must still be a plain
-    // path, or assigning it to the upstream URL could redirect the request.
+    // Empty segments normalize away (`/api//auth/me` == `/api/auth/me`), but the
+    // result must stay a plain path, or assigning it to the upstream URL could
+    // redirect the request.
     for (const splat of ['//evil.example/health', 'auth//me', '/health']) {
       const pathname = toUpstreamPathname(splat)
 
@@ -673,10 +672,10 @@ describe('readBoundedBody', () => {
     const request = new Request(`${WEB_ORIGIN}/api/posts`, {
       method: 'POST',
       body: oversize,
-      // A stream the runtime may deliver in pieces, with no length to check.
+      // A stream the runtime may deliver in pieces, so there is no length to check.
       headers: { 'Content-Length': '16' },
-      // @ts-expect-error `duplex` is required by Node for a streamed body and is
-      // not yet in the DOM types this project compiles against.
+      // @ts-expect-error `duplex` is required by Node for streamed bodies but
+      // missing from the DOM types this project compiles against.
       duplex: 'half',
     })
 

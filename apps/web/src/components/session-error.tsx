@@ -10,13 +10,10 @@ import {
 import type { ErrorComponentProps } from '@tanstack/react-router'
 
 /**
- * Shown when a guard could not decide who the visitor is.
- *
- * A guarded route reaches its component only after the session was verified, so
- * reaching this component at all means the check failed rather than that the
- * visitor is signed out — showing a login form here would be a second wrong
- * answer on top of the first. Protected content stays unrendered either way, and
- * `Try again` repeats the check.
+ * Shown when a guard could not verify the session. Reaching this means the check
+ * failed, not that the visitor is signed out, so a login form would be a second
+ * wrong answer — protected content stays unrendered and `Try again` repeats the
+ * check.
  */
 export function SessionVerificationError({ reset }: ErrorComponentProps) {
   return (

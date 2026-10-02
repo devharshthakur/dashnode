@@ -25,8 +25,7 @@ import { useSignup } from '#/lib/session'
 
 export const Route = createFileRoute('/signup')({
   beforeLoad: () => authGaurd('guest'),
-  // The guard renders differently for a visitor who already has a session, so
-  // the response is per-visitor and no shared cache may keep a copy of it.
+  // The guard renders differently per visitor, so no shared cache may keep it.
   headers: () => ({ 'Cache-Control': 'private, no-store' }),
   errorComponent: SessionVerificationError,
   component: SignupPage,
@@ -44,9 +43,8 @@ function SignupPage() {
     onSubmit: ({ value }) => {
       signup.mutate(value, {
         onSuccess: async () => {
-          // Navigating first, then invalidating, is what keeps the two from
-          // racing: invalidating here would re-run this route's guest guard with
-          // the new session in hand and redirect before the dashboard loaded.
+          // Navigate before invalidating: invalidating first would re-run this
+          // guest guard with the new session and redirect too early.
           await navigate({ to: '/dashboard' })
           await router.invalidate()
         },

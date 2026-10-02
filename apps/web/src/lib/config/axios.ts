@@ -2,10 +2,9 @@ import axios from 'axios'
 import type { AxiosError, AxiosRequestConfig } from 'axios'
 
 /**
- * Base path of the API, which this application serves for itself at `/api/*` by
- * forwarding each request to the API over the server. The browser therefore
- * never learns the API's address and always stays on its own origin, so the
- * session cookie is sent without any credentialed cross-origin request.
+ * Base path of the API, which this app serves itself at `/api/*` by forwarding
+ * to the API. The browser stays on its own origin and never learns the API's
+ * address, so no credentialed cross-origin request is needed.
  */
 export const API_BASE_PATH = '/api'
 
@@ -26,9 +25,8 @@ export class ApiError extends Error {
 
 export const apiClient = axios.create({ baseURL: API_BASE_PATH })
 
-// The API answers failures with `{ error: string }`, but a proxy or a crashed
-// server may answer with HTML, so a body without that shape falls back to the
-// status instead of surfacing an unrelated message.
+// The API answers failures with `{ error }`, but a proxy or crashed server may
+// answer HTML, so fall back to the status rather than surface a stray message.
 function readErrorMessage(error: AxiosError<ApiErrorBody>): string {
   const body: ApiErrorBody | null | undefined = error.response?.data
   const message = body?.error
@@ -45,10 +43,9 @@ function readErrorMessage(error: AxiosError<ApiErrorBody>): string {
 }
 
 /**
- * Calls the API with the session cookie attached. Every non-2xx answer becomes
- * an {@link ApiError}, so callers branch on `status` rather than inspecting the
- * response themselves. A request that never reached the API keeps its original
- * error, which lets a query keep an error state instead of a false answer.
+ * Calls the API with the session cookie attached. Non-2xx answers become
+ * {@link ApiError} so callers branch on `status`. A request that never reached
+ * the API keeps its original error, preserving a query's error state.
  */
 export async function apiRequest<T>(
   path: string,

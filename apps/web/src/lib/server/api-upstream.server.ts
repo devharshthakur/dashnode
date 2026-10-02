@@ -2,17 +2,13 @@ import { getRequestHeader, getRequestUrl } from '@tanstack/react-start/server'
 
 import type { SessionUser } from '#/lib/session'
 
-// The `.server.ts` name is what keeps this module out of the browser bundle:
-// Start's import protection rejects any client-side import of a file that
-// matches `*.server.*`. Nothing here may reach the client — it holds the API's
-// address, which is private in production.
+// `.server.ts` keeps this module out of the browser bundle (Start's import
+// protection rejects client imports of `*.server.*`). It holds the API's
+// address, which is private in production, so nothing here may reach the client.
 //
-// It is one file on purpose. The browser reaches the API through the catch-all
-// server route in `src/routes/api/$.ts`, and everything that decides what that
-// route forwards lives here: the upstream address, the path mapping, the origin
-// check on writes, which headers cross the network, and how the answer comes
-// back. The route file stays a thin delegate, so the rules below can be read as
-// one list instead of followed across a second module.
+// One module on purpose: it owns everything `src/routes/api/$.ts` forwards —
+// upstream address, path mapping, the write-origin check, header filtering, and
+// the response relay. The route file stays a thin delegate.
 
 /** Environment variable naming the API origin this server forwards to. */
 export const API_UPSTREAM_ENV_VAR = 'API_UPSTREAM_URL'
@@ -21,19 +17,15 @@ export const API_UPSTREAM_ENV_VAR = 'API_UPSTREAM_URL'
 const DEFAULT_API_UPSTREAM_URL = 'http://localhost:8000'
 
 /**
- * Largest body the proxy will forward, matching `bodyParser.json({ limit: '1mb' })`
- * in `apps/api/src/app.ts`. Refusing it here means a request Express would have
- * rejected never gets buffered in this process first.
+ * Largest body the proxy forwards, matching the API's `bodyParser.json` limit
+ * (`apps/api/src/app.ts`). Checking here avoids buffering what Express rejects.
  */
 export const MAX_REQUEST_BODY_BYTES = 1_048_576
 
 /** Value browsers send for an opaque origin, e.g. a sandboxed frame. */
 const OPAQUE_ORIGIN = 'null'
 
-/**
- * Hop-by-hop headers (RFC 9110 §7.6.1). They describe the one connection a
- * header travels over, so a proxy drops them instead of passing them along.
- */
+/** Hop-by-hop headers (RFC 9110 §7.6.1): a proxy drops these, not relays them. */
 const HOP_BY_HOP_HEADERS = new Set([
   'connection',
   'keep-alive',
@@ -46,13 +38,9 @@ const HOP_BY_HOP_HEADERS = new Set([
 ])
 
 /**
- * Request headers the proxy must not relay.
- *
- * `host` and the forwarding headers describe the hop that delivered the request
- * rather than the visitor, and copying them would let a caller tell the API
- * something different from what it told Start. `content-length` describes the
- * framing of the original body, which `fetch` computes again once the proxy has
- * decided what to forward.
+ * Request headers the proxy must not relay: hop-by-hop, the ones describing the
+ * delivering hop rather than the visitor, and `content-length`, which `fetch`
+ * recomputes for the body it sends.
  */
 const REQUEST_HEADERS_TO_DROP = new Set([
   ...HOP_BY_HOP_HEADERS,
@@ -68,13 +56,9 @@ const REQUEST_HEADERS_TO_DROP = new Set([
 ])
 
 /**
- * Response headers worth passing through.
- *
- * `content-encoding` and `content-length` are absent on purpose: `fetch` has
- * already decoded the body, so neither describes what goes on the wire any more.
- * `cache-control` is absent because the proxy states its own policy below, and
- * the upstream's CORS headers are absent because the browser is talking to this
- * application, not to the API.
+ * Response headers worth passing through. `content-encoding` and
+ * `content-length` are absent because `fetch` already decoded the body;
+ * `cache-control` and the upstream's CORS headers are handled below instead.
  */
 const RESPONSE_HEADERS_TO_PASS = [
   'content-type',
@@ -89,10 +73,9 @@ const RESPONSE_HEADERS_TO_PASS = [
 ]
 
 /**
- * Every path the API exposes is built from ordinary URL segments: router names,
- * `mine`, `list`, slugs, and ObjectIds. Anything outside this set cannot name an
- * endpoint, so refusing it is both simpler and safer than escaping a string that
- * might carry `..`, a backslash, or a percent-encoded `?`.
+ * Shape of a valid API path segment (router names, `mine`/`list`, slugs,
+ * ObjectIds). Anything outside it cannot name an endpoint, so it is refused
+ * rather than escaped.
  */
 const PATH_SEGMENT = /^[\w.~-]+$/
 
@@ -129,16 +112,10 @@ class ApiUnreachableError extends Error {
 }
 
 /**
- * Reads and checks the API origin this server forwards to.
- *
- * Only an origin is accepted. A path would be silently dropped by the mapping in
- * {@link toUpstreamPathname}, credentials would travel to the API in clear text,
- * and a query or fragment would look like configuration when it is not.
- *
- * Development falls back to the address `pnpm dev` serves the API on. Production
- * refuses an unset value rather than assuming one: a wrong guess would either
- * point the proxy at a public host nobody audited or quietly send every request
- * nowhere, and the failure is much easier to read when it is reported.
+ * Reads and validates the API origin to forward to. Only a bare `http(s)`
+ * origin is accepted — a path, credentials, query, or fragment would change
+ * what the proxy means. Development falls back to the local API address;
+ * production treats an unset value as an error rather than guessing.
  */
 export function parseApiUpstreamUrl(
   raw: string | undefined,
@@ -186,13 +163,9 @@ export function parseApiUpstreamUrl(
 }
 
 /**
- * Maps the file-route splat onto the API's own path: a request for
- * `/api/auth/me` carries the splat `auth/me` and becomes `/auth/me` upstream,
- * because Express mounts its routers at the server root.
- *
- * Checking every segment is what keeps this a fixed translation. The result can
- * only be a sequence of plain segments, so it cannot walk out of the API, smuggle
- * a query string into the path, or reach any origin but the configured one.
+ * Maps the route splat to the API path: `/api/auth/me` -> `/auth/me`, since
+ * Express mounts at the root. Every segment is checked, so the result cannot
+ * escape the origin, smuggle a query, or carry `..`/percent escapes.
  */
 export function toUpstreamPathname(splat: string | undefined): string {
   const segments = (splat ?? '')
@@ -209,26 +182,19 @@ export function toUpstreamPathname(splat: string | undefined): string {
 }
 
 /**
- * Methods a cross-site page can trigger without a preflight, and so the only
- * ones that need no origin check.
- *
- * `HEAD` is safe because nothing about a request body makes the others
- * dangerous: the API mounts no `HEAD` route and Start answers it with the `GET`
- * handler, dropping the body.
+ * Methods a cross-site page can send without a preflight, so they skip the
+ * origin check. `HEAD` qualifies: Start answers it with the GET handler and
+ * drops the body.
  */
 export function isSafeMethod(method: string): boolean {
   return method === 'GET' || method === 'HEAD'
 }
 
 /**
- * The origin to send upstream for a state-changing request, or `null` when the
- * request must not be forwarded at all.
- *
- * Browsers always send `Origin` on an unsafe method, so a missing one means the
- * caller is not a page of this application. The opaque `null` is what a
- * sandboxed frame or a local file sends, and no page here has one. In both cases
- * the request says nothing about who asked, and the session cookie rides along
- * regardless — so the answer is to refuse, not to guess.
+ * The origin to forward for a state-changing request, or `null` to refuse it.
+ * Browsers always send `Origin` on unsafe methods, so a missing or opaque
+ * `null` one means the caller is not a page here — and the session cookie would
+ * still ride along, so refuse rather than guess.
  */
 export function resolveForwardedOrigin(
   headers: Headers,
@@ -252,17 +218,10 @@ export function resolveForwardedOrigin(
 }
 
 /**
- * The headers to send upstream: everything the browser sent except what a proxy
- * must not relay, with the public origin in place of the caller's.
- *
- * The session cookie is part of "everything the browser sent" and rides along
- * without any help from the client: a same-origin `/api/*` request carries it on
- * its own, because JavaScript cannot read an HttpOnly cookie.
- *
- * Express checks the origin on its own state-changing routes against an allowlist
- * that names the deployed web origin, so the value that reaches the API has to be
- * the public one. Forwarding the browser's copy would leave the API unable to
- * distinguish a write from this site from one that merely claims to be.
+ * Headers to send upstream: the browser's, minus what a proxy must not relay,
+ * with the public origin in place of the caller's. The session cookie rides
+ * along on its own — a same-origin request carries it, since JS cannot read an
+ * HttpOnly cookie. The public origin is what the API's own origin check expects.
  */
 export function buildUpstreamRequestHeaders(
   request: Request,
@@ -282,13 +241,9 @@ export function buildUpstreamRequestHeaders(
 }
 
 /**
- * Rewrites one `Set-Cookie` so the browser stores it for the web host.
- *
- * The API sets its session cookie host-only, and a cookie that arrives through
- * this proxy is stored for whichever host served the response. A `Domain`
- * attribute naming the API's own host would make the browser reject it, so it is
- * dropped; every other attribute — `HttpOnly`, `Secure`, `SameSite`, `Path`, and
- * expiry — is left exactly as the API wrote it.
+ * Drops a `Domain` attribute so the browser stores the cookie for the web host
+ * (a domain naming the API's host would be rejected). Every other attribute —
+ * `HttpOnly`, `Secure`, `SameSite`, `Path`, expiry — is left as the API wrote it.
  */
 export function stripCookieDomain(setCookie: string): string {
   const pairEnd = setCookie.indexOf(';')
@@ -309,10 +264,9 @@ export function stripCookieDomain(setCookie: string): string {
 }
 
 /**
- * Cookies as separate values. `Headers.get` folds several `Set-Cookie` lines
- * into one comma-joined string, which a browser cannot split back apart again;
- * runtimes that cannot list them individually get the single-line case, which is
- * all a one-cookie response needs.
+ * Cookies as separate values. `Headers.get` folds multiple `Set-Cookie` lines
+ * into one string a browser cannot split, so prefer the runtime's list and fall
+ * back to the single-line case.
  */
 function getSetCookieValues(upstream: Headers): string[] {
   if (typeof upstream.getSetCookie === 'function') {
@@ -325,9 +279,9 @@ function getSetCookieValues(upstream: Headers): string[] {
 }
 
 /**
- * The headers to answer the browser with: the upstream's own content type and
- * metadata, each session cookie on its own `Set-Cookie` line, and a caching
- * policy that keeps personalized answers out of shared caches.
+ * Headers to answer the browser with: the upstream's content metadata, each
+ * cookie on its own `Set-Cookie` line, and a no-store policy for personalized
+ * answers.
  */
 export function buildProxyResponseHeaders(upstream: Headers): Headers {
   const headers = new Headers()
@@ -340,8 +294,8 @@ export function buildProxyResponseHeaders(upstream: Headers): Headers {
     }
   }
 
-  // Anything under `/api/*` can depend on the caller's session, and during this
-  // migration that includes the public reads, so no answer here may be stored.
+  // Everything under `/api/*` can depend on the caller's session, so nothing
+  // here may be stored.
   headers.set('Cache-Control', 'private, no-store')
 
   for (const cookie of getSetCookieValues(upstream)) {
@@ -352,12 +306,9 @@ export function buildProxyResponseHeaders(upstream: Headers): Headers {
 }
 
 /**
- * Reads the body, refusing anything over the limit.
- *
- * `Content-Length` is a claim rather than a promise, so the chunks are counted
- * as they arrive: a request that lies about its length, or omits the header
- * altogether, still cannot make this process hold more than the API would have
- * accepted.
+ * Reads the body, refusing anything over the limit. `Content-Length` is only a
+ * claim, so chunks are counted as they arrive; a request that lies about it or
+ * omits it still cannot make this process hold more than the API would accept.
  */
 export async function readBoundedBody(
   request: Request,
@@ -406,11 +357,9 @@ export async function readBoundedBody(
 }
 
 /**
- * Reads the API origin to forward to.
- *
- * Per request, not at module scope: edge SSR runtimes only populate the
- * environment while a request is being handled, so a module-level read would
- * freeze `undefined` into the bundle and every request would fail the same way.
+ * Reads the upstream URL per request, not at module scope: edge SSR runtimes
+ * only populate the environment while handling a request, so a module-level
+ * read would freeze `undefined` into the bundle.
  */
 function getApiUpstreamUrl(): URL {
   return parseApiUpstreamUrl(
@@ -434,9 +383,8 @@ async function callUpstream(call: UpstreamCall): Promise<Response> {
   target.search = call.search
 
   try {
-    // `manual` because following a redirect would let the API steer this process
-    // at an address of its choosing. No endpoint here redirects, so nothing is
-    // lost by refusing to follow one.
+    // `manual`: following a redirect would let the API steer this process at an
+    // address of its choosing. No endpoint here redirects.
     return await fetch(target, {
       method: call.method,
       headers: call.headers,
@@ -444,15 +392,15 @@ async function callUpstream(call: UpstreamCall): Promise<Response> {
       redirect: 'manual',
     })
   } catch {
-    // The upstream address is private in production, so it stays out of the
-    // message the browser eventually sees.
+    // The upstream address is private in production, so keep it out of the
+    // message the browser sees.
     throw new ApiUnreachableError()
   }
 }
 
 /**
- * The API's own failure shape, so the browser's API client reads a refusal from
- * the proxy exactly as it reads one from the API. Never cached.
+ * The API's `{ error }` shape, so the client reads a proxy refusal just like an
+ * API one.
  */
 function apiError(status: number, error: string): Response {
   return Response.json(
@@ -462,9 +410,9 @@ function apiError(status: number, error: string): Response {
 }
 
 /**
- * The answer for a failure the proxy itself produced. A path that cannot be
- * mapped is a `404` because no endpoint exists for it, while an API that cannot
- * be reached is a `502` — distinct from any status the API chose for itself.
+ * A response for a failure the proxy itself produced: 404 for a path that cannot
+ * be mapped, 502 for an unreachable or misconfigured API (distinct from any
+ * status the API chose).
  */
 function proxyFailure(error: unknown): Response | null {
   if (error instanceof ProxyPathError) {
@@ -487,11 +435,9 @@ function allowsBody(status: number): boolean {
 }
 
 /**
- * Forwards one browser request to the API and returns its answer.
- *
- * This is the whole reason the browser never needs the API's address: the
- * request and the response cross the network inside this process, while the page
- * keeps talking to its own origin.
+ * Forwards one browser request to the API and returns its answer. This is why
+ * the browser never needs the API's address: request and response cross the
+ * network inside this process while the page stays on its own origin.
  */
 export async function forwardApiRequest(
   request: Request,
@@ -500,10 +446,9 @@ export async function forwardApiRequest(
   const safe = isSafeMethod(request.method)
   const requestOrigin = getRequestUrl().origin
 
-  // A state-changing request may only continue when the browser says it came from
-  // this application. Start's own CSRF middleware guards server functions, not
-  // server routes, so this check has to happen here — before the request reaches
-  // the API, and before the session cookie rides along with it.
+  // State-changing requests only continue when the browser says they came from
+  // this site. Start's CSRF middleware guards server functions, not server
+  // routes, so the check lives here — before the cookie rides upstream.
   const forwardedOrigin = safe
     ? requestOrigin
     : resolveForwardedOrigin(request.headers, requestOrigin)
@@ -556,14 +501,10 @@ interface UserEnvelope {
 
 /**
  * The signed-in account for the request being handled, or `null` when the API
- * says there is no session.
- *
- * The cookie is read from the incoming request rather than from the browser, so
- * the answer arrives with the page instead of the page asking for it again. Only
- * a definite `401` means signed out: an outage, or any other status, throws. A
- * guard that read that as "signed out" would greet a signed-in visitor with a
- * login form, which is both wrong and harder to tell apart from a real session
- * ending.
+ * says there is no session. The cookie is read from the incoming request, so the
+ * answer arrives with the page. Only a definite 401 means signed out: anything
+ * else throws, because treating an outage as "signed out" would show a signed-in
+ * visitor a login form.
  */
 export async function getCurrentUserFromRequest(): Promise<SessionUser | null> {
   const cookie = getRequestHeader('cookie')

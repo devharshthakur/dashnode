@@ -32,12 +32,9 @@ interface UserEnvelope {
 
 export const sessionQueryKey = ['session'] as const
 
-// The session is read through the server on both sides of hydration: the API's
-// `/auth/me` is asked for while the page renders on the server, and in the
-// browser afterwards. A `401` is the API's way of saying "no session", which
-// `getCurrentUser` reports as `null`; anything else — a network fault, a `500` —
-// is left to throw, so the query keeps an error state to show instead of a false
-// "signed out".
+// Read through the server on both sides of hydration. A 401 is the API's "no
+// session" and becomes `null`; anything else throws, so the query keeps an
+// error state instead of showing a false "signed out".
 export const sessionQueryOptions = queryOptions({
   queryKey: sessionQueryKey,
   queryFn: getCurrentUser,
