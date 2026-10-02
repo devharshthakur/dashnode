@@ -3,12 +3,12 @@ import { describe, expect, it } from 'vitest'
 import { api, trustedOrigin } from '#test/app'
 import { createPost, createTag, createUser } from '#test/factories'
 
-describe('GET /api/tags', () => {
+describe('GET /tags', () => {
   it('answers 200 with an id, name, slug and count per tag', async () => {
     const user = await createUser()
     await createPost(user, { tags: ['node'] })
 
-    const response = await api().get('/api/tags')
+    const response = await api().get('/tags')
 
     expect(response.status).toBe(200)
     expect(response.body).toEqual({
@@ -23,14 +23,14 @@ describe('GET /api/tags', () => {
     const user = await createUser()
     await createPost(user, { status: 'draft', tags: ['secret-project'] })
 
-    const response = await api().get('/api/tags')
+    const response = await api().get('/tags')
 
     expect(response.body).toEqual({ tags: [] })
     expect(response.text).not.toContain('secret-project')
   })
 })
 
-describe('GET /api/tags/:slug/posts', () => {
+describe('GET /tags/:slug/posts', () => {
   it('answers 200 with cards and a cursor, and no stored body', async () => {
     const user = await createUser()
     const post = await createPost(user, {
@@ -38,7 +38,7 @@ describe('GET /api/tags/:slug/posts', () => {
       content: 'A stored body.',
     })
 
-    const response = await api().get('/api/tags/node/posts')
+    const response = await api().get('/tags/node/posts')
 
     expect(response.status).toBe(200)
     expect(response.body).toHaveProperty('posts')
@@ -54,7 +54,7 @@ describe('GET /api/tags/:slug/posts', () => {
     await createPost(user, { status: 'draft', tags: ['node'] })
     await createPost(user, { tags: ['other'] })
 
-    const response = await api().get('/api/tags/node/posts')
+    const response = await api().get('/tags/node/posts')
 
     expect(response.body.posts.map((post: { id: string }) => post.id)).toEqual([
       published.id,
@@ -62,7 +62,7 @@ describe('GET /api/tags/:slug/posts', () => {
   })
 
   it('answers an empty list for an unknown slug, not a 404', async () => {
-    const response = await api().get('/api/tags/no-such-tag/posts')
+    const response = await api().get('/tags/no-such-tag/posts')
 
     expect(response.status).toBe(200)
     expect(response.body).toEqual({ posts: [], nextCursor: null })
@@ -73,14 +73,14 @@ describe('GET /api/tags/:slug/posts', () => {
     ['one above the maximum', 'limit=51'],
     ['a value that is not a number', 'limit=many'],
   ])('answers 400 for a limit of %s', async (_case, query) => {
-    const response = await api().get(`/api/tags/node/posts?${query}`)
+    const response = await api().get(`/tags/node/posts?${query}`)
 
     expect(response.status).toBe(400)
     expect(response.body.error).toBe('Validation Error')
   })
 
   it('answers 400 for a malformed cursor', async () => {
-    const response = await api().get('/api/tags/node/posts?cursor=not-a-cursor')
+    const response = await api().get('/tags/node/posts?cursor=not-a-cursor')
 
     expect(response.status).toBe(400)
   })
@@ -104,7 +104,7 @@ describe('GET /api/tags/:slug/posts', () => {
     let pages = 0
 
     for (;;) {
-      const response = await api().get(`/api/tags/node/posts${query}`)
+      const response = await api().get(`/tags/node/posts${query}`)
       seen.push(...response.body.posts.map((post: { id: string }) => post.id))
       pages += 1
 
@@ -126,7 +126,7 @@ describe('CORS', () => {
   // decides what a browser may read, `requireTrustedOrigin` decides what the
   // server will do. Both are load-bearing.
   it('allows a trusted origin to read the response with credentials', async () => {
-    const response = await api().get('/api/tags').set('Origin', trustedOrigin())
+    const response = await api().get('/tags').set('Origin', trustedOrigin())
 
     expect(response.headers['access-control-allow-origin']).toBe(
       trustedOrigin(),
@@ -136,7 +136,7 @@ describe('CORS', () => {
 
   it('does not allow a foreign origin to read the response', async () => {
     const response = await api()
-      .get('/api/tags')
+      .get('/tags')
       .set('Origin', 'https://evil.example.com')
 
     expect(response.headers['access-control-allow-origin']).toBeUndefined()

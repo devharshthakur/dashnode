@@ -3,7 +3,6 @@ import { randomUUID } from 'node:crypto'
 import { pino, type LoggerOptions } from 'pino'
 import { pinoHttp } from 'pino-http'
 
-import { API_PREFIX } from '#config/constants'
 import { env } from '#env'
 
 const isProduction = env.NODE_ENV === 'production'
@@ -60,5 +59,5 @@ export const httpLogger = pinoHttp({
     return id
   },
   // Frequently polled health checks add log noise without diagnostic value.
-  autoLogging: { ignore: (req) => req.url === `${API_PREFIX}/health` },
+  autoLogging: { ignore: (req) => req.url === '/health' },
 })

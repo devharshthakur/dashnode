@@ -81,7 +81,7 @@ export async function registeredSession(
 ): Promise<Session> {
   const agent = request.agent(App())
   const response = await agent
-    .post('/api/auth/register')
+    .post('/auth/register')
     .set('Origin', trustedOrigin())
     .send({
       name: credentials.name ?? 'Test User',
@@ -98,7 +98,7 @@ export async function loggedInSession(
 ): Promise<Session> {
   const agent = request.agent(App())
   const response = await agent
-    .post('/api/auth/login')
+    .post('/auth/login')
     .set('Origin', trustedOrigin())
     .send(credentials)
 

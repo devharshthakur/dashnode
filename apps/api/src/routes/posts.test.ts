@@ -44,7 +44,7 @@ function write(
   return request
 }
 
-describe('GET /api/posts', () => {
+describe('GET /posts', () => {
   it('answers 200 with cards and a cursor', async () => {
     const user = await createUser()
     const post = await createPost(user, {
@@ -52,7 +52,7 @@ describe('GET /api/posts', () => {
       tags: ['node'],
     })
 
-    const response = await api().get('/api/posts')
+    const response = await api().get('/posts')
 
     expect(response.status).toBe(200)
     expect(response.body).toHaveProperty('posts')
@@ -83,7 +83,7 @@ describe('GET /api/posts', () => {
     const user = await createUser()
     await createPost(user, { content: 'A secret draft body.' })
 
-    const response = await api().get('/api/posts')
+    const response = await api().get('/posts')
 
     expect(response.body.posts[0]).not.toHaveProperty('content')
     expect(response.text).not.toContain('A secret draft body.')
@@ -94,7 +94,7 @@ describe('GET /api/posts', () => {
     const published = await createPost(user, { status: 'published' })
     await createPost(user, { status: 'draft' })
 
-    const response = await api().get('/api/posts')
+    const response = await api().get('/posts')
 
     expect(response.body.posts.map((post: { id: string }) => post.id)).toEqual([
       published.id,
@@ -113,9 +113,9 @@ describe('GET /api/posts', () => {
       tags: ['db'],
     })
 
-    const search = await api().get('/api/posts?search=routing')
-    const byTag = await api().get('/api/posts?tag=db')
-    const unknownTag = await api().get('/api/posts?tag=nope')
+    const search = await api().get('/posts?search=routing')
+    const byTag = await api().get('/posts?tag=db')
+    const unknownTag = await api().get('/posts?tag=nope')
 
     expect(
       search.body.posts.map((post: { title: string }) => post.title),
@@ -136,7 +136,7 @@ describe('GET /api/posts', () => {
       createPost(user, { publishedAt: new Date('2024-03-01T00:00:00Z') }),
     ])
 
-    const response = await api().get('/api/posts?limit=2')
+    const response = await api().get('/posts?limit=2')
 
     expect(response.body.posts).toHaveLength(2)
     expect(response.body.nextCursor).not.toBeNull()
@@ -147,7 +147,7 @@ describe('GET /api/posts', () => {
     ['one above the maximum', 'limit=51'],
     ['a value that is not a number', 'limit=many'],
   ])('answers 400 for a limit of %s', async (_case, query) => {
-    const response = await api().get(`/api/posts?${query}`)
+    const response = await api().get(`/posts?${query}`)
 
     expect(response.status).toBe(400)
     expect(response.body.error).toBe('Validation Error')
@@ -155,7 +155,7 @@ describe('GET /api/posts', () => {
 
   // Falling back to the first page would loop a client over page one forever.
   it('answers 400 for a malformed cursor rather than the first page', async () => {
-    const response = await api().get('/api/posts?cursor=not-a-cursor')
+    const response = await api().get('/posts?cursor=not-a-cursor')
 
     expect(response.status).toBe(400)
     expect(response.body.details[0].message).toBe('Invalid cursor')
@@ -172,7 +172,7 @@ describe('GET /api/posts', () => {
     )
 
     const seen: string[] = []
-    let cursor: string | null = '/api/posts?limit=2'
+    let cursor: string | null = '/posts?limit=2'
     let pages = 0
 
     while (cursor !== null && pages < 10) {
@@ -191,7 +191,7 @@ describe('GET /api/posts', () => {
   })
 })
 
-describe('GET /api/posts/:slug', () => {
+describe('GET /posts/:slug', () => {
   it('answers 200 with the Markdown body verbatim', async () => {
     const user = await createUser()
     const post = await createPost(user, {
@@ -199,7 +199,7 @@ describe('GET /api/posts/:slug', () => {
       content: MARKDOWN,
     })
 
-    const response = await api().get(`/api/posts/${post.slug}`)
+    const response = await api().get(`/posts/${post.slug}`)
 
     expect(response.status).toBe(200)
     expect(response.body.post.content).toBe(MARKDOWN)
@@ -211,8 +211,8 @@ describe('GET /api/posts/:slug', () => {
     const user = await createUser()
     const draft = await createPost(user, { status: 'draft' })
 
-    const published = await api().get(`/api/posts/${draft.slug}`)
-    const unknown = await api().get('/api/posts/no-such-post')
+    const published = await api().get(`/posts/${draft.slug}`)
+    const unknown = await api().get('/posts/no-such-post')
 
     expect(published.status).toBe(404)
     expect(unknown.status).toBe(404)
@@ -220,10 +220,10 @@ describe('GET /api/posts/:slug', () => {
   })
 })
 
-describe('POST /api/posts', () => {
+describe('POST /posts', () => {
   it('answers 401 without a session', async () => {
     const response = await api()
-      .post('/api/posts')
+      .post('/posts')
       .set('Origin', ORIGIN)
       .send(NEW_POST)
 
@@ -236,7 +236,7 @@ describe('POST /api/posts', () => {
     const response = await write(
       session,
       'post',
-      '/api/posts',
+      '/posts',
       FOREIGN_ORIGIN,
     ).send(NEW_POST)
 
@@ -247,7 +247,7 @@ describe('POST /api/posts', () => {
   it('creates a draft by default and stores the Markdown body unaltered', async () => {
     const session = await author()
 
-    const response = await write(session, 'post', '/api/posts').send(NEW_POST)
+    const response = await write(session, 'post', '/posts').send(NEW_POST)
 
     expect(response.status).toBe(201)
     expect(response.body.post.status).toBe('draft')
@@ -260,7 +260,7 @@ describe('POST /api/posts', () => {
   it('publishes when asked to', async () => {
     const session = await author()
 
-    const response = await write(session, 'post', '/api/posts').send({
+    const response = await write(session, 'post', '/posts').send({
       ...NEW_POST,
       status: 'published',
     })
@@ -273,7 +273,7 @@ describe('POST /api/posts', () => {
   it('stores the Markdown body unaltered', async () => {
     const session = await author()
 
-    const response = await write(session, 'post', '/api/posts').send(NEW_POST)
+    const response = await write(session, 'post', '/posts').send(NEW_POST)
 
     expect(response.body.post.content).toBe(MARKDOWN)
     const stored = await Post.findById(response.body.post.id).lean()
@@ -285,7 +285,7 @@ describe('POST /api/posts', () => {
     const session = await author()
     const other = await createUser()
 
-    const response = await write(session, 'post', '/api/posts').send({
+    const response = await write(session, 'post', '/posts').send({
       ...NEW_POST,
       author: other.id,
     })
@@ -305,7 +305,7 @@ describe('POST /api/posts', () => {
   ])('answers 400 with details for %s', async (_case, override, path) => {
     const session = await author()
 
-    const response = await write(session, 'post', '/api/posts').send({
+    const response = await write(session, 'post', '/posts').send({
       ...NEW_POST,
       ...override,
     })
@@ -320,13 +320,13 @@ describe('POST /api/posts', () => {
   })
 })
 
-describe('PUT /api/posts/:id', () => {
+describe('PUT /posts/:id', () => {
   it('lets the author edit the post and stores the change', async () => {
     const session = await author()
-    const { post } = (await write(session, 'post', '/api/posts').send(NEW_POST))
+    const { post } = (await write(session, 'post', '/posts').send(NEW_POST))
       .body
 
-    const response = await write(session, 'put', `/api/posts/${post.id}`).send({
+    const response = await write(session, 'put', `/posts/${post.id}`).send({
       title: 'An edited title',
     })
 
@@ -343,7 +343,7 @@ describe('PUT /api/posts/:id', () => {
     const other = await author()
     const post = await createPost(authorRef(session), { title: 'Untouched' })
 
-    const response = await write(other, 'put', `/api/posts/${post.id}`).send({
+    const response = await write(other, 'put', `/posts/${post.id}`).send({
       title: 'Hijacked',
     })
 
@@ -361,9 +361,9 @@ describe('PUT /api/posts/:id', () => {
     const unknown = await write(
       session,
       'put',
-      `/api/posts/${new Types.ObjectId().toHexString()}`,
+      `/posts/${new Types.ObjectId().toHexString()}`,
     ).send({ title: 'New' })
-    const malformed = await write(session, 'put', '/api/posts/not-an-id').send({
+    const malformed = await write(session, 'put', '/posts/not-an-id').send({
       title: 'New',
     })
 
@@ -377,7 +377,7 @@ describe('PUT /api/posts/:id', () => {
     const session = await author()
     const post = await createPost(authorRef(session))
 
-    const response = await write(session, 'put', `/api/posts/${post.id}`).send({
+    const response = await write(session, 'put', `/posts/${post.id}`).send({
       content: '   ',
     })
 
@@ -389,14 +389,12 @@ describe('PUT /api/posts/:id', () => {
     const session = await author()
     const post = await createPost(authorRef(session), { status: 'draft' })
 
-    const published = await write(session, 'put', `/api/posts/${post.id}`).send(
-      { status: 'published' },
-    )
-    const unpublished = await write(
-      session,
-      'put',
-      `/api/posts/${post.id}`,
-    ).send({ status: 'draft' })
+    const published = await write(session, 'put', `/posts/${post.id}`).send({
+      status: 'published',
+    })
+    const unpublished = await write(session, 'put', `/posts/${post.id}`).send({
+      status: 'draft',
+    })
 
     expect(Number.isNaN(Date.parse(published.body.post.publishedAt))).toBe(
       false,
@@ -411,13 +409,13 @@ describe('PUT /api/posts/:id', () => {
     const post = await createPost(authorRef(session), { title: 'Untouched' })
 
     const anonymous = await api()
-      .put(`/api/posts/${post.id}`)
+      .put(`/posts/${post.id}`)
       .set('Origin', ORIGIN)
       .send({ title: 'New' })
     const foreign = await write(
       session,
       'put',
-      `/api/posts/${post.id}`,
+      `/posts/${post.id}`,
       FOREIGN_ORIGIN,
     ).send({ title: 'Hijacked' })
 
@@ -429,12 +427,12 @@ describe('PUT /api/posts/:id', () => {
   })
 })
 
-describe('DELETE /api/posts/:id', () => {
+describe('DELETE /posts/:id', () => {
   it('lets the author delete the post', async () => {
     const session = await author()
     const post = await createPost(authorRef(session))
 
-    const response = await write(session, 'delete', `/api/posts/${post.id}`)
+    const response = await write(session, 'delete', `/posts/${post.id}`)
 
     expect(response.status).toBe(200)
     expect(response.body).toEqual({ message: 'Post deleted' })
@@ -446,7 +444,7 @@ describe('DELETE /api/posts/:id', () => {
     const other = await author()
     const post = await createPost(authorRef(session))
 
-    const response = await write(other, 'delete', `/api/posts/${post.id}`)
+    const response = await write(other, 'delete', `/posts/${post.id}`)
 
     expect(response.status).toBe(403)
     expect(response.body).toEqual({
@@ -461,9 +459,9 @@ describe('DELETE /api/posts/:id', () => {
     const unknown = await write(
       session,
       'delete',
-      `/api/posts/${new Types.ObjectId().toHexString()}`,
+      `/posts/${new Types.ObjectId().toHexString()}`,
     )
-    const malformed = await write(session, 'delete', '/api/posts/not-an-id')
+    const malformed = await write(session, 'delete', '/posts/not-an-id')
 
     expect(unknown.status).toBe(404)
     expect(unknown.body).toEqual({ error: 'Post not found' })
@@ -478,12 +476,12 @@ describe('DELETE /api/posts/:id', () => {
     const post = await createPost(authorRef(session))
 
     const anonymous = await api()
-      .delete(`/api/posts/${post.id}`)
+      .delete(`/posts/${post.id}`)
       .set('Origin', ORIGIN)
     const foreign = await write(
       session,
       'delete',
-      `/api/posts/${post.id}`,
+      `/posts/${post.id}`,
       FOREIGN_ORIGIN,
     )
 
@@ -494,9 +492,9 @@ describe('DELETE /api/posts/:id', () => {
   })
 })
 
-describe('GET /api/posts/mine/list', () => {
+describe('GET /posts/mine/list', () => {
   it('answers 401 without a session', async () => {
-    const response = await api().get('/api/posts/mine/list')
+    const response = await api().get('/posts/mine/list')
 
     expect(response.status).toBe(401)
   })
@@ -514,7 +512,7 @@ describe('GET /api/posts/mine/list', () => {
       createdAt: new Date('2023-01-01T00:00:00.000Z'),
     })
 
-    const response = await session.agent.get('/api/posts/mine/list')
+    const response = await session.agent.get('/posts/mine/list')
 
     expect(response.status).toBe(200)
     expect(response.body.posts.map((post: { id: string }) => post.id)).toEqual([
@@ -540,7 +538,7 @@ describe('GET /api/posts/mine/list', () => {
     )
 
     const seen: string[] = []
-    let cursor: string | null = '/api/posts/mine/list?limit=2'
+    let cursor: string | null = '/posts/mine/list?limit=2'
     let pages = 0
 
     while (cursor !== null && pages < 10) {
@@ -549,7 +547,7 @@ describe('GET /api/posts/mine/list', () => {
       cursor =
         response.body.nextCursor === null
           ? null
-          : `/api/posts/mine/list?limit=2&cursor=${response.body.nextCursor}`
+          : `/posts/mine/list?limit=2&cursor=${response.body.nextCursor}`
       pages += 1
     }
 
@@ -563,7 +561,7 @@ describe('GET /api/posts/mine/list', () => {
     const mine = await createPost(authorRef(session))
     await createPost(await createUser())
 
-    const response = await session.agent.get('/api/posts/mine/list')
+    const response = await session.agent.get('/posts/mine/list')
 
     expect(response.body.posts.map((post: { id: string }) => post.id)).toEqual([
       mine.id,
@@ -578,10 +576,10 @@ describe('GET /api/posts/mine/list', () => {
       createPost(authorRef(session)),
     ])
 
-    const page = await session.agent.get('/api/posts/mine/list?limit=2')
-    const badLimit = await session.agent.get('/api/posts/mine/list?limit=0')
+    const page = await session.agent.get('/posts/mine/list?limit=2')
+    const badLimit = await session.agent.get('/posts/mine/list?limit=0')
     const badCursor = await session.agent.get(
-      '/api/posts/mine/list?cursor=not-a-cursor',
+      '/posts/mine/list?cursor=not-a-cursor',
     )
 
     expect(page.body.posts).toHaveLength(2)
@@ -591,7 +589,7 @@ describe('GET /api/posts/mine/list', () => {
   })
 })
 
-describe('GET /api/posts/mine/:id', () => {
+describe('GET /posts/mine/:id', () => {
   // The private detail endpoint serves the author's drafts; a published post is
   // already public through the slug read, so the ownership boundary is proved
   // on a draft.
@@ -602,7 +600,7 @@ describe('GET /api/posts/mine/:id', () => {
       content: 'Private body.',
     })
 
-    const response = await session.agent.get(`/api/posts/mine/${post.id}`)
+    const response = await session.agent.get(`/posts/mine/${post.id}`)
 
     expect(response.status).toBe(200)
     expect(response.body.post.id).toBe(post.id)
@@ -615,9 +613,9 @@ describe('GET /api/posts/mine/:id', () => {
     const other = await author()
     const post = await createPost(authorRef(session))
 
-    const foreign = await other.agent.get(`/api/posts/mine/${post.id}`)
+    const foreign = await other.agent.get(`/posts/mine/${post.id}`)
     const unknown = await session.agent.get(
-      `/api/posts/mine/${new Types.ObjectId().toHexString()}`,
+      `/posts/mine/${new Types.ObjectId().toHexString()}`,
     )
 
     expect(foreign.status).toBe(403)
@@ -627,7 +625,7 @@ describe('GET /api/posts/mine/:id', () => {
   it('answers 400 for an id that is not an ObjectId', async () => {
     const session = await author()
 
-    const response = await session.agent.get('/api/posts/mine/not-an-id')
+    const response = await session.agent.get('/posts/mine/not-an-id')
 
     expect(response.status).toBe(400)
   })
@@ -635,7 +633,7 @@ describe('GET /api/posts/mine/:id', () => {
   it('answers 401 without a session', async () => {
     const post = await createPost(await createUser())
 
-    const response = await api().get(`/api/posts/mine/${post.id}`)
+    const response = await api().get(`/posts/mine/${post.id}`)
 
     expect(response.status).toBe(401)
   })

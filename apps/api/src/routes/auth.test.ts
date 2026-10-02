@@ -48,10 +48,10 @@ function authCookie(setCookie: string | string[] | undefined): {
   }
 }
 
-describe('POST /api/auth/register', () => {
+describe('POST /auth/register', () => {
   it('creates the account, sets the cookie, and authenticates the follow-up', async () => {
     const response = await api()
-      .post('/api/auth/register')
+      .post('/auth/register')
       .set('Origin', ORIGIN)
       .send(CREDENTIALS)
 
@@ -76,7 +76,7 @@ describe('POST /api/auth/register', () => {
     expect(attributes.get('samesite')).toBe('Lax')
 
     const followUp = await api()
-      .get('/api/auth/me')
+      .get('/auth/me')
       .set('Cookie', `${AUTH_COOKIE_NAME}=${value}`)
 
     expect(followUp.status).toBe(200)
@@ -93,7 +93,7 @@ describe('POST /api/auth/register', () => {
     ],
   ])('answers 400 with details for %s', async (_case, override, path) => {
     const response = await api()
-      .post('/api/auth/register')
+      .post('/auth/register')
       .set('Origin', ORIGIN)
       .send({ ...CREDENTIALS, ...override })
 
@@ -110,13 +110,10 @@ describe('POST /api/auth/register', () => {
   })
 
   it('answers 409 when the email is already registered', async () => {
-    await api()
-      .post('/api/auth/register')
-      .set('Origin', ORIGIN)
-      .send(CREDENTIALS)
+    await api().post('/auth/register').set('Origin', ORIGIN).send(CREDENTIALS)
 
     const response = await api()
-      .post('/api/auth/register')
+      .post('/auth/register')
       .set('Origin', ORIGIN)
       .send({ ...CREDENTIALS, name: 'Someone Else' })
 
@@ -127,13 +124,10 @@ describe('POST /api/auth/register', () => {
   })
 
   it('answers 409 when only the casing of the email differs', async () => {
-    await api()
-      .post('/api/auth/register')
-      .set('Origin', ORIGIN)
-      .send(CREDENTIALS)
+    await api().post('/auth/register').set('Origin', ORIGIN).send(CREDENTIALS)
 
     const response = await api()
-      .post('/api/auth/register')
+      .post('/auth/register')
       .set('Origin', ORIGIN)
       .send({ ...CREDENTIALS, email: 'ADA@Example.com' })
 
@@ -141,12 +135,12 @@ describe('POST /api/auth/register', () => {
   })
 })
 
-describe('POST /api/auth/login', () => {
+describe('POST /auth/login', () => {
   it('answers 200 with the same user shape', async () => {
     await createUser(CREDENTIALS)
 
     const response = await api()
-      .post('/api/auth/login')
+      .post('/auth/login')
       .set('Origin', ORIGIN)
       .send({ email: CREDENTIALS.email, password: CREDENTIALS.password })
 
@@ -176,7 +170,7 @@ describe('POST /api/auth/login', () => {
 
   it('answers 400 for an invalid body', async () => {
     const response = await api()
-      .post('/api/auth/login')
+      .post('/auth/login')
       .set('Origin', ORIGIN)
       .send({ email: 'nope' })
 
@@ -189,11 +183,11 @@ describe('POST /api/auth/login', () => {
     await createUser(CREDENTIALS)
 
     const wrongPassword = await api()
-      .post('/api/auth/login')
+      .post('/auth/login')
       .set('Origin', ORIGIN)
       .send({ email: CREDENTIALS.email, password: 'not-the-password' })
     const unknownEmail = await api()
-      .post('/api/auth/login')
+      .post('/auth/login')
       .set('Origin', ORIGIN)
       .send({ email: 'nobody@example.com', password: CREDENTIALS.password })
 
@@ -204,11 +198,11 @@ describe('POST /api/auth/login', () => {
   })
 })
 
-describe('GET /api/auth/me', () => {
+describe('GET /auth/me', () => {
   it('answers 200 with the signed-in user and no password', async () => {
     const session = await registeredSession({ email: 'me@example.com' })
 
-    const response = await session.agent.get('/api/auth/me')
+    const response = await session.agent.get('/auth/me')
 
     expect(response.status).toBe(200)
     expect(response.body.user.email).toBe('me@example.com')
@@ -216,7 +210,7 @@ describe('GET /api/auth/me', () => {
   })
 
   it('answers 401 with no cookie', async () => {
-    const response = await api().get('/api/auth/me')
+    const response = await api().get('/auth/me')
 
     expect(response.status).toBe(401)
     expect(response.body).toEqual({ error: 'Unauthorized' })
@@ -224,7 +218,7 @@ describe('GET /api/auth/me', () => {
 
   it('answers 401 with a garbage cookie', async () => {
     const response = await api()
-      .get('/api/auth/me')
+      .get('/auth/me')
       .set('Cookie', `${AUTH_COOKIE_NAME}=garbage`)
 
     expect(response.status).toBe(401)
@@ -242,19 +236,19 @@ describe('GET /api/auth/me', () => {
       .sign(new TextEncoder().encode(env.JWT_SECRET))
 
     const response = await api()
-      .get('/api/auth/me')
+      .get('/auth/me')
       .set('Cookie', `${AUTH_COOKIE_NAME}=${expired}`)
 
     expect(response.status).toBe(401)
   })
 })
 
-describe('POST /api/auth/logout', () => {
+describe('POST /auth/logout', () => {
   it('clears the cookie and refuses the revoked token on replay', async () => {
     const session = await registeredSession({ email: 'clear@example.com' })
 
     const response = await session.agent
-      .post('/api/auth/logout')
+      .post('/auth/logout')
       .set('Origin', ORIGIN)
 
     expect(response.status).toBe(200)
@@ -266,7 +260,7 @@ describe('POST /api/auth/logout', () => {
 
     // The whole point of the blacklist: the cookie is still on the client, and
     // it has to stop working. A replay, not a stub.
-    const replay = await api().get('/api/auth/me').set('Cookie', session.cookie)
+    const replay = await api().get('/auth/me').set('Cookie', session.cookie)
 
     expect(replay.status).toBe(401)
   })
@@ -275,7 +269,7 @@ describe('POST /api/auth/logout', () => {
     const session = await registeredSession({ email: 'origin@example.com' })
 
     const response = await session.agent
-      .post('/api/auth/logout')
+      .post('/auth/logout')
       .set('Origin', 'https://evil.example.com')
 
     expect(response.status).toBe(403)
@@ -286,7 +280,7 @@ describe('POST /api/auth/logout', () => {
     const session = await registeredSession({ email: 'opaque@example.com' })
 
     const response = await session.agent
-      .post('/api/auth/logout')
+      .post('/auth/logout')
       .set('Origin', 'null')
 
     expect(response.status).toBe(403)
@@ -295,10 +289,10 @@ describe('POST /api/auth/logout', () => {
   // There is nothing to revoke in either case, and neither is an error.
   it('answers 200 without a cookie, and with one it cannot verify', async () => {
     const noCookie = await api()
-      .post('/api/auth/logout')
+      .post('/auth/logout')
       .set('Origin', trustedOrigin())
     const unverifiable = await api()
-      .post('/api/auth/logout')
+      .post('/auth/logout')
       .set('Origin', trustedOrigin())
       .set('Cookie', `${AUTH_COOKIE_NAME}=not-a-token`)
 
@@ -313,11 +307,9 @@ describe('POST /api/auth/logout', () => {
   it('is harmless when the same session logs out twice', async () => {
     const session = await registeredSession({ email: 'twice@example.com' })
 
-    const first = await session.agent
-      .post('/api/auth/logout')
-      .set('Origin', ORIGIN)
+    const first = await session.agent.post('/auth/logout').set('Origin', ORIGIN)
     const second = await api()
-      .post('/api/auth/logout')
+      .post('/auth/logout')
       .set('Origin', ORIGIN)
       .set('Cookie', session.cookie)
 
@@ -343,20 +335,20 @@ describe('POST /api/auth/logout', () => {
     })
     expect(user.id).toBe(first.user.id)
 
-    await first.agent.post('/api/auth/logout').set('Origin', ORIGIN)
+    await first.agent.post('/auth/logout').set('Origin', ORIGIN)
 
-    await expect(first.agent.get('/api/auth/me')).resolves.toMatchObject({
+    await expect(first.agent.get('/auth/me')).resolves.toMatchObject({
       status: 401,
     })
-    await expect(second.agent.get('/api/auth/me')).resolves.toMatchObject({
+    await expect(second.agent.get('/auth/me')).resolves.toMatchObject({
       status: 200,
     })
   })
 })
 
-describe('GET /api/health', () => {
+describe('GET /health', () => {
   it('answers 200 with no session and no origin', async () => {
-    const response = await api().get('/api/health')
+    const response = await api().get('/health')
 
     expect(response.status).toBe(200)
     expect(response.body.status).toBe('ok')
