@@ -1,7 +1,13 @@
 import { useForm } from '@tanstack/react-form'
-import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
+import {
+  createFileRoute,
+  Link,
+  useNavigate,
+  useRouter,
+} from '@tanstack/react-router'
 import { FeatherIcon } from 'lucide-react'
 
+import { SessionVerificationError } from '#/components/session-error'
 import { Alert, AlertDescription } from '#/components/ui/alert'
 import { Button } from '#/components/ui/button'
 import {
@@ -13,19 +19,22 @@ import {
 } from '#/components/ui/field'
 import { Input } from '#/components/ui/input'
 import { Spinner } from '#/components/ui/spinner'
+import { authGaurd } from '#/lib/auth-gaurd'
 import { signupSchema } from '#/lib/schemas/auth'
 import { useSignup } from '#/lib/session'
-import { requireGuest } from '#/lib/session-guard'
 
 export const Route = createFileRoute('/signup')({
-  ssr: false,
-  beforeLoad: requireGuest,
+  beforeLoad: () => authGaurd('guest'),
+  // The guard renders differently per visitor, so no shared cache may keep it.
+  headers: () => ({ 'Cache-Control': 'private, no-store' }),
+  errorComponent: SessionVerificationError,
   component: SignupPage,
   head: () => ({ meta: [{ title: 'Create an account — DashNode' }] }),
 })
 
 function SignupPage() {
   const navigate = useNavigate()
+  const router = useRouter()
   const signup = useSignup()
 
   const form = useForm({
@@ -33,7 +42,12 @@ function SignupPage() {
     validators: { onSubmit: signupSchema },
     onSubmit: ({ value }) => {
       signup.mutate(value, {
-        onSuccess: () => void navigate({ to: '/dashboard' }),
+        onSuccess: async () => {
+          // Navigate before invalidating: invalidating first would re-run this
+          // guest guard with the new session and redirect too early.
+          await navigate({ to: '/dashboard' })
+          await router.invalidate()
+        },
       })
     },
   })

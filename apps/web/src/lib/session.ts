@@ -5,7 +5,8 @@ import {
   useQueryClient,
 } from '@tanstack/react-query'
 
-import { ApiError, apiRequest } from '#/lib/api'
+import { apiRequest } from '#/lib/config/axios'
+import { getCurrentUser } from '#/lib/auth-gaurd'
 
 /** The signed-in account, as `GET /auth/me` returns it. */
 export interface SessionUser {
@@ -31,25 +32,12 @@ interface UserEnvelope {
 
 export const sessionQueryKey = ['session'] as const
 
-// A `401` is the API's way of saying "no session", which is an answer rather
-// than a failure. Anything else — a network fault, a `500` — is left to throw
-// so the query keeps an error state to show instead of a false "signed out".
-async function fetchSession(): Promise<SessionUser | null> {
-  try {
-    const { user } = await apiRequest<UserEnvelope>('/auth/me')
-    return user
-  } catch (error) {
-    if (error instanceof ApiError && error.status === 401) {
-      return null
-    }
-
-    throw error
-  }
-}
-
+// Read through the server on both sides of hydration. A 401 is the API's "no
+// session" and becomes `null`; anything else throws, so the query keeps an
+// error state instead of showing a false "signed out".
 export const sessionQueryOptions = queryOptions({
   queryKey: sessionQueryKey,
-  queryFn: fetchSession,
+  queryFn: getCurrentUser,
   retry: false,
   staleTime: 30_000,
 })
