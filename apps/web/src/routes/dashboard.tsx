@@ -1,7 +1,7 @@
-import { createFileRoute, useNavigate } from '@tanstack/react-router'
+import { createFileRoute, useNavigate, useRouter } from '@tanstack/react-router'
 import { LogOutIcon } from 'lucide-react'
-import { useEffect } from 'react'
 
+import { SessionVerificationError } from '#/components/session-error'
 import { Button } from '#/components/ui/button'
 import {
   Card,
@@ -12,56 +12,26 @@ import {
   CardTitle,
 } from '#/components/ui/card'
 import { Spinner } from '#/components/ui/spinner'
-import { useLogout, useSession } from '#/lib/session'
+import { useLogout } from '#/lib/session'
+import { requireAuth } from '#/lib/session-guard'
 
 export const Route = createFileRoute('/dashboard')({
+  beforeLoad: requireAuth,
+  // The page is rendered from the session cookie, so no shared cache may keep a
+  // copy of it.
+  headers: () => ({ 'Cache-Control': 'private, no-store' }),
+  errorComponent: SessionVerificationError,
   component: DashboardPage,
   head: () => ({ meta: [{ title: 'Dashboard — DashNode' }] }),
 })
 
 function DashboardPage() {
   const navigate = useNavigate()
-  const session = useSession()
+  const router = useRouter()
   const logout = useLogout()
-  const user = session.data
-
-  // A route guard is a user-experience aid, not an authorization boundary:
-  // every protected API request still verifies the session cookie on the
-  // server, so a bypassed redirect reveals nothing.
-  useEffect(() => {
-    if (session.isSuccess && !user) {
-      void navigate({ to: '/login', replace: true })
-    }
-  }, [navigate, session.isSuccess, user])
-
-  if (session.isError) {
-    return (
-      <main className="mx-auto flex w-full max-w-6xl flex-1 items-center justify-center px-4 py-16">
-        <Card className="w-full max-w-md">
-          <CardHeader>
-            <CardTitle>DashNode is unavailable</CardTitle>
-            <CardDescription>
-              We could not reach the API to check your session. Please try
-              again.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Button variant="outline" onClick={() => void session.refetch()}>
-              Try again
-            </Button>
-          </CardContent>
-        </Card>
-      </main>
-    )
-  }
-
-  if (!user) {
-    return (
-      <main className="mx-auto flex w-full max-w-6xl flex-1 items-center justify-center px-4 py-16">
-        <Spinner />
-      </main>
-    )
-  }
+  // The guard verified this user before the page rendered, so there is nothing
+  // to wait for and no signed-out state to recover from here.
+  const { user } = Route.useRouteContext()
 
   return (
     <main className="mx-auto flex w-full max-w-6xl flex-1 items-center justify-center px-4 py-16">
@@ -81,7 +51,13 @@ function DashboardPage() {
             disabled={logout.isPending}
             onClick={() => {
               logout.mutate(undefined, {
-                onSuccess: () => void navigate({ to: '/', replace: true }),
+                onSuccess: async () => {
+                  // Navigating first, then invalidating, is what keeps the two
+                  // from racing: the guest guard on the way out would otherwise
+                  // see the cleared session and redirect before this finishes.
+                  await navigate({ to: '/', replace: true })
+                  await router.invalidate()
+                },
               })
             }}
           >
