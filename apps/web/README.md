@@ -1,13 +1,13 @@
 # Web app
 
-The browser-facing application lives here: a DashNode landing page with login and signup, plus a small dashboard.
+The browser-facing application lives here: a DashNode landing page with login and signup, plus the signed-in dashboard.
 
 | Route        | Purpose                                                                            |
 | ------------ | ---------------------------------------------------------------------------------- |
 | `/`          | DashNode landing page. Shows Login and Sign up, or Go to dashboard when signed in. |
 | `/login`     | Signs in through `POST /api/auth/login`.                                           |
 | `/signup`    | Creates an account through `POST /api/auth/register`.                              |
-| `/dashboard` | The signed-in user's landing spot, with logout.                                    |
+| `/dashboard` | App shell with a sidebar, the published feed, and a composer that creates a post.  |
 | `/api/*`     | Server route that forwards each request to the API. Not a page.                    |
 
 ## Talking to the API
