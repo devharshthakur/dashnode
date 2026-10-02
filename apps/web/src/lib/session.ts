@@ -5,7 +5,8 @@ import {
   useQueryClient,
 } from '@tanstack/react-query'
 
-import { ApiError, apiRequest } from '#/lib/api'
+import { apiRequest } from '#/lib/api'
+import { getCurrentUserFn } from '#/lib/current-user'
 
 /** The signed-in account, as `GET /auth/me` returns it. */
 export interface SessionUser {
@@ -31,25 +32,15 @@ interface UserEnvelope {
 
 export const sessionQueryKey = ['session'] as const
 
-// A `401` is the API's way of saying "no session", which is an answer rather
-// than a failure. Anything else — a network fault, a `500` — is left to throw
-// so the query keeps an error state to show instead of a false "signed out".
-async function fetchSession(): Promise<SessionUser | null> {
-  try {
-    const { user } = await apiRequest<UserEnvelope>('/auth/me')
-    return user
-  } catch (error) {
-    if (error instanceof ApiError && error.status === 401) {
-      return null
-    }
-
-    throw error
-  }
-}
-
+// The session is read through the server on both sides of hydration: the API's
+// `/auth/me` is asked for while the page renders on the server, and in the
+// browser afterwards. A `401` is the API's way of saying "no session", which
+// `getCurrentUserFn` reports as `null`; anything else — a network fault, a `500` —
+// is left to throw, so the query keeps an error state to show instead of a false
+// "signed out".
 export const sessionQueryOptions = queryOptions({
   queryKey: sessionQueryKey,
-  queryFn: fetchSession,
+  queryFn: getCurrentUserFn,
   retry: false,
   staleTime: 30_000,
 })

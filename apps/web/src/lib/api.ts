@@ -1,11 +1,13 @@
 import axios from 'axios'
 import type { AxiosError, AxiosRequestConfig } from 'axios'
 
-import { env } from '#/env'
-
-// Base URL of the Express API, validated at startup by `src/env.ts`. Set
-// `VITE_API_URL` (for example in `apps/web/.env`) to point at another API.
-export const API_BASE_URL = env.VITE_API_URL
+/**
+ * Base path of the API, which this application serves for itself at `/api/*` by
+ * forwarding each request to the API over the server. The browser therefore
+ * never learns the API's address and always stays on its own origin, so the
+ * session cookie is sent without any credentialed cross-origin request.
+ */
+export const API_BASE_PATH = '/api'
 
 interface ApiErrorBody {
   error?: unknown
@@ -22,12 +24,7 @@ export class ApiError extends Error {
   }
 }
 
-// The session is an HttpOnly cookie that belongs to the API origin, so every
-// request opts into sending credentials.
-export const apiClient = axios.create({
-  baseURL: API_BASE_URL,
-  withCredentials: true,
-})
+export const apiClient = axios.create({ baseURL: API_BASE_PATH })
 
 // The API answers failures with `{ error: string }`, but a proxy or a crashed
 // server may answer with HTML, so a body without that shape falls back to the
