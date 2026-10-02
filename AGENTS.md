@@ -29,11 +29,11 @@ Node >= 24 (`.nvmrc` pins 24.21.0) and pnpm 12.5.1 (`packageManager`, with `engi
 - `pnpm --filter web generate-routes` — regenerate `apps/web/src/routeTree.gen.ts` after adding or removing route files.
 - `pnpm --filter api db:down` / `db:logs` — stop MongoDB / follow its logs.
 
-Verify a running API with `curl http://localhost:8000/api/health`.
+Verify a running API with `curl http://localhost:8000/health`.
 
 ## Task → starting path
 
-- **API endpoint**: route in `apps/api/src/routes/` (routers mount in `routes/index.ts` under the `/api` prefix from `config/constants.ts`), Zod request schema in `src/schemas/`, logic in `src/services/`, model in `src/models/`. Map Mongoose documents through the DTO mappers in `src/utils/` (see `utils/post.ts`); throw domain error classes from `src/errors/` and map them to status codes in the route — `middlewares/error.ts` answers a body the JSON parser refuses with the status the parser set, and is the generic 500 fallback for everything else.
+- **API endpoint**: route in `apps/api/src/routes/` (routers mount in `routes/index.ts`, which `app.ts` mounts at the server root), Zod request schema in `src/schemas/`, logic in `src/services/`, model in `src/models/`. Map Mongoose documents through the DTO mappers in `src/utils/` (see `utils/post.ts`); throw domain error classes from `src/errors/` and map them to status codes in the route — `middlewares/error.ts` answers a body the JSON parser refuses with the status the parser set, and is the generic 500 fallback for everything else.
 - **Protected route**: add `requireAuth` from `src/middlewares/auth.ts`; it verifies the session cookie and sets `req.user`. Web route guards are UX only, never the authorization boundary.
 - **Session/auth changes**: `src/utils/auth.ts` (sign, verify, cookie) and `src/services/auth.ts` (register, login, revocation).
 - **Shared wire types**: `packages/shared/src/` (package `@packages/shared`) — types only, no runtime validation; consumed by the API, not yet by the web app.

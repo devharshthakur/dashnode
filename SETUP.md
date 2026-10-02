@@ -28,7 +28,7 @@ pnpm dev
 The database command also initializes the replica set. The web app runs at `http://localhost:5173`; the API listens at `http://localhost:8000`. Check the API with:
 
 ```bash
-curl http://localhost:8000/api/health
+curl http://localhost:8000/health
 ```
 
 When you are finished, stop the database:

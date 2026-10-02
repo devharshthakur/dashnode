@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import { updateUserProfileBodySchema } from '#schemas/user'
 
-// Each field is sent on its own, which is the case `PUT /api/users/me` promises.
+// Each field is sent on its own, which is the case `PUT /users/me` promises.
 describe('updateUserProfileBodySchema', () => {
   it('accepts a name on its own', () => {
     expect(updateUserProfileBodySchema.parse({ name: 'Ada Lovelace' })).toEqual(

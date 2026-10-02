@@ -48,7 +48,7 @@ describe('errorHandler with a body the parser refused', () => {
     const warn = vi.spyOn(logger, 'warn').mockImplementation(() => {})
 
     const response = await api()
-      .post('/api/auth/login')
+      .post('/auth/login')
       .set('Content-Type', 'application/json')
       .send('{"password":"hunter2"')
 
@@ -68,7 +68,7 @@ describe('errorHandler with a body the parser refused', () => {
 
   it('answers 413 for a body over the one megabyte limit', async () => {
     const response = await api()
-      .post('/api/auth/login')
+      .post('/auth/login')
       .send({ password: 'x'.repeat(1_100_000) })
 
     expect(response.status).toBe(413)
@@ -77,7 +77,7 @@ describe('errorHandler with a body the parser refused', () => {
 
   it('answers 415 for an unsupported charset', async () => {
     const response = await api()
-      .post('/api/auth/login')
+      .post('/auth/login')
       .set('Content-Type', 'application/json; charset=ibm500')
       .send('{}')
 
@@ -94,7 +94,7 @@ describe('errorHandler with anything else', () => {
     )
 
     const response = await session.agent
-      .post('/api/auth/logout')
+      .post('/auth/logout')
       .set('Origin', trustedOrigin())
 
     expect(response.status).toBe(500)
@@ -103,7 +103,7 @@ describe('errorHandler with anything else', () => {
     // A 500 is a fault, not a logout: no clearing cookie may be sent, and the
     // original session has to keep working so a client does not throw it away.
     expect(response.headers['set-cookie']).toBeUndefined()
-    const after = await session.agent.get('/api/auth/me')
+    const after = await session.agent.get('/auth/me')
 
     expect(after.status).toBe(200)
     expect(after.body.user.id).toBe(session.user.id)
@@ -156,13 +156,13 @@ describe('errorHandler with anything else', () => {
 
 describe('notFoundHandler', () => {
   it('answers an unknown path with the path it did not find', async () => {
-    const response = await api().get('/api/nope')
+    const response = await api().get('/nope')
 
     expect(response.status).toBe(404)
-    expect(response.body).toEqual({ error: 'Not Found', path: '/api/nope' })
+    expect(response.body).toEqual({ error: 'Not Found', path: '/nope' })
   })
 
-  it('uses the JSON shape outside the API prefix too, not an HTML page', async () => {
+  it('answers an unknown path with JSON, not an HTML page', async () => {
     const response = await api().get('/totally/unknown')
 
     expect(response.status).toBe(404)

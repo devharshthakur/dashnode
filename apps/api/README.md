@@ -1,6 +1,6 @@
 # API
 
-This Express service owns authentication, request validation, post operations, and MongoDB access. Its routes are prefixed with `/api`.
+This Express service owns authentication, request validation, post operations, and MongoDB access. Its routes are mounted at the server root.
 
 ## API checklist
 
@@ -8,31 +8,31 @@ Items follow the [REST API requirements](../../PRD.md#5-rest-api-specification).
 
 ### Health
 
-- [x] `GET /api/health`
+- [x] `GET /health`
 
 ### Authentication
 
-- [x] `POST /api/auth/register` — create an account and start a session.
-- [x] `POST /api/auth/login` — verify credentials and start a session.
-- [x] `GET /api/auth/me` — return the signed-in user's account data.
-- [x] `POST /api/auth/logout` — revoke the current session and clear its cookie; requires a request from a whitelisted web origin.
+- [x] `POST /auth/register` — create an account and start a session.
+- [x] `POST /auth/login` — verify credentials and start a session.
+- [x] `GET /auth/me` — return the signed-in user's account data.
+- [x] `POST /auth/logout` — revoke the current session and clear its cookie; requires a request from a whitelisted web origin.
 
 ### Posts
 
-- [x] `GET /api/posts` — list published posts, one bounded page at a time; supports title search and tag filtering.
-- [x] `GET /api/posts/:slug` — return a published post by slug.
-- [x] `POST /api/posts` — create a draft or published post; two requests for the same new title both succeed, on `title` and `title-1`.
-- [x] `PUT /api/posts/:id` — update the author's own post.
-- [x] `DELETE /api/posts/:id` — delete the author's own post.
-- [x] `GET /api/posts/mine/list` — list the signed-in user's drafts and published posts, one bounded page at a time.
-- [x] `GET /api/posts/mine/:id` — return one of the signed-in user's posts, including its Markdown body.
+- [x] `GET /posts` — list published posts, one bounded page at a time; supports title search and tag filtering.
+- [x] `GET /posts/:slug` — return a published post by slug.
+- [x] `POST /posts` — create a draft or published post; two requests for the same new title both succeed, on `title` and `title-1`.
+- [x] `PUT /posts/:id` — update the author's own post.
+- [x] `DELETE /posts/:id` — delete the author's own post.
+- [x] `GET /posts/mine/list` — list the signed-in user's drafts and published posts, one bounded page at a time.
+- [x] `GET /posts/mine/:id` — return one of the signed-in user's posts, including its Markdown body.
 
 ### Tags and users
 
-- [x] `GET /api/tags` — list tags on published posts, with counts of the published posts using each tag.
-- [x] `GET /api/tags/:slug/posts` — list published posts for a tag, one bounded page at a time.
-- [x] `GET /api/users/:id` — return a public profile and one bounded page of its published posts.
-- [x] `PUT /api/users/me` — update the signed-in user's profile; every field is optional, so one can be sent on its own.
+- [x] `GET /tags` — list tags on published posts, with counts of the published posts using each tag.
+- [x] `GET /tags/:slug/posts` — list published posts for a tag, one bounded page at a time.
+- [x] `GET /users/:id` — return a public profile and one bounded page of its published posts.
+- [x] `PUT /users/me` — update the signed-in user's profile; every field is optional, so one can be sent on its own.
 
 Unlike the PRD's bearer-token flow, this API sends signed JWTs in HttpOnly cookies. Protected routes verify the session; public post results exclude drafts, update and delete enforce ownership on the server, and user responses omit password hashes. Routes, validation schemas, services, and models are organized under `src/`.
 
@@ -40,17 +40,17 @@ Passwords are hashed with bcrypt, which only folds the first 72 **bytes** of a p
 
 Protected routes answer `401 Unauthorized` only when the session itself is rejected: no cookie, a token that fails verification, a token revoked by logout, or a user that no longer exists. Session verification also reads from MongoDB, and a database failure there is a server fault, so it surfaces as `500 Internal Server Error` instead. Clients can therefore treat `401` as proof the session ended and retry after a `500`, rather than discarding a cookie that is still valid.
 
-Because a browser attaches the session cookie to any request it is told to send — including a form POST from another site — every route that writes on behalf of the signed-in user (`POST /api/posts`, `PUT /api/posts/:id`, `DELETE /api/posts/:id`, `PUT /api/users/me`, and `POST /api/auth/logout`) first checks that the request's `Origin` header is one of the `CORS_ORIGIN` entries. CORS alone is not enough: it stops a foreign site from reading the response, but not from triggering the write. A request that declares no origin is rejected with `403`, so non-browser clients calling these endpoints must send an `Origin` header themselves. Read-only routes are unaffected.
+Because a browser attaches the session cookie to any request it is told to send — including a form POST from another site — every route that writes on behalf of the signed-in user (`POST /posts`, `PUT /posts/:id`, `DELETE /posts/:id`, `PUT /users/me`, and `POST /auth/logout`) first checks that the request's `Origin` header is one of the `CORS_ORIGIN` entries. CORS alone is not enough: it stops a foreign site from reading the response, but not from triggering the write. A request that declares no origin is rejected with `403`, so non-browser clients calling these endpoints must send an `Origin` header themselves. Read-only routes are unaffected.
 
-`GET /api/tags` lists only tags that at least one **published** post uses, so a tag coined while writing a draft — such as `secret-project` — is not visible to a visitor until a post carrying it is published. A count of `0` is therefore not part of a response, unlike the PRD's "all available tags": showing a zero-count tag would leak a draft's tag name through the public directory. The tag document is not deleted when it drops out of the directory, so publishing the draft later brings the tag back with the count it now has, and a tag left unused by retagging or deleting its only post can be reused by name instead of being created twice. Because the directory is derived from published posts rather than read from the tag collection, it follows those transitions by itself: a draft's tag appears when the post is published and disappears when the post is unpublished, with no separate cleanup.
+`GET /tags` lists only tags that at least one **published** post uses, so a tag coined while writing a draft — such as `secret-project` — is not visible to a visitor until a post carrying it is published. A count of `0` is therefore not part of a response, unlike the PRD's "all available tags": showing a zero-count tag would leak a draft's tag name through the public directory. The tag document is not deleted when it drops out of the directory, so publishing the draft later brings the tag back with the count it now has, and a tag left unused by retagging or deleting its only post can be reused by name instead of being created twice. Because the directory is derived from published posts rather than read from the tag collection, it follows those transitions by itself: a draft's tag appears when the post is published and disappears when the post is unpublished, with no separate cleanup.
 
 Public feeds order posts by `publishedAt`, which is stamped when a post is first published (or republished after being unpublished) and left unchanged by later edits.
 
-A post's slug is derived from its title and must be unique, and choosing one is a separate step from storing it, so two concurrent `POST /api/posts` requests for the same new title can pick the same slug. The unique index on `slug` is the final protection, and a request it rejects simply takes a different slug and writes again, so a lost race never fails the request and never becomes a `5xx`: both posts are stored, under `title` and `title-1`. Once a request has lost more than one race it stops competing for a readable slug and appends a random token to the title instead (`title-a7f3c19e02`), which no concurrent request can be holding. Only a duplicate on the slug index is handled this way; any other database failure is left to the generic `500`, so a server fault is still reported as one.
+A post's slug is derived from its title and must be unique, and choosing one is a separate step from storing it, so two concurrent `POST /posts` requests for the same new title can pick the same slug. The unique index on `slug` is the final protection, and a request it rejects simply takes a different slug and writes again, so a lost race never fails the request and never becomes a `5xx`: both posts are stored, under `title` and `title-1`. Once a request has lost more than one race it stops competing for a readable slug and appends a random token to the title instead (`title-a7f3c19e02`), which no concurrent request can be holding. Only a duplicate on the slug index is handled this way; any other database failure is left to the generic `500`, so a server fault is still reported as one.
 
 Image fields — a post's `coverImage` and a profile's `avatarUrl` — are the API's only references to media it does not host, so both accept an absolute `http` or `https` URL of at most 2048 characters, or an empty string to clear the image. A value that is not a URL at all (`not-a-url`), a relative or protocol-relative path, or another scheme (`javascript:`, `data:`, `file:`) is answered with `400 Validation Error` instead of being stored and handed back to a client as an image source. Existing records are not re-validated: a URL stored before this rule keeps being served, and the client renders it as an image link or nothing.
 
-`PUT /api/users/me` takes any subset of `name`, `bio`, and `avatarUrl`, and sets only the fields the request carried, so changing a bio does not require resending the name and avatar. A body with none of them is answered with `400 Validation Error` rather than a no-op success. Responses come from the same user shape as registration and login, which never includes the password hash.
+`PUT /users/me` takes any subset of `name`, `bio`, and `avatarUrl`, and sets only the fields the request carried, so changing a bio does not require resending the name and avatar. A body with none of them is answered with `400 Validation Error` rather than a no-op success. Responses come from the same user shape as registration and login, which never includes the password hash.
 
 Request bodies are parsed as JSON and capped at 1 MB. A body the parser refuses is the client's mistake, not a server fault: malformed JSON gets `400 Bad Request`, a body over the limit gets `413 Payload Too Large`, and an unsupported charset or content encoding gets `415 Unsupported Media Type`. Each response carries only that status message. Anything else that throws is answered with a generic `500 Internal Server Error` and no stack trace, so an unexpected failure never leaks internals. `400` on a write is therefore always a request the client should fix and resend, never a transient condition to retry.
 
@@ -68,9 +68,9 @@ pnpm test:watch                            # re-runs on change
 pnpm --filter api test:coverage            # with a coverage report
 ```
 
-Nothing has to be set up first. `pnpm test` needs no `pnpm --filter api db:up`, no Docker, and no `apps/api/.env`. The suite runs as two Vitest projects: the **pure** project (schemas, pure utilities, environment parsing, the origin middleware) touches no database at all, and the **database** project starts one **in-memory MongoDB replica set** for the whole run — `src/test/global-setup.ts` — and `src/test/setup.ts` connects Mongoose, builds the unique indexes before the first test, and empties the collections between tests. A replica set rather than a plain in-memory server because post and tag writes run in transactions, which MongoDB only allows on a replica set member. The file lists for each project live in `src/test/projects.ts`.
+Nothing has to be set up first. `pnpm test` needs no `pnpm --filter api db:up`, no Docker, and no `apps/.env`. The suite runs as two Vitest projects: the **pure** project (schemas, pure utilities, environment parsing, the origin middleware) touches no database at all, and the **database** project starts one **in-memory MongoDB replica set** for the whole run — `src/test/global-setup.ts` — and `src/test/setup.ts` connects Mongoose, builds the unique indexes before the first test, and empties the collections between tests. A replica set rather than a plain in-memory server because post and tag writes run in transactions, which MongoDB only allows on a replica set member. The file lists for each project live in `src/test/projects.ts`.
 
-The suite reads a committed `apps/api/.env.test`, which supplies a throwaway signing secret and keeps `pino` out of the test report. Before any test file runs, `src/test/env-setup.ts` loads that file and validates the **effective** environment with the same Zod schema the server uses — the value a shell or CI exported wins over the file, so an invalid shell override fails the gate instead of being discovered inside a worker. It also refuses two misconfigurations: a missing file, and a runner `NODE_ENV` other than `test` (Vitest defaults `NODE_ENV` to `test` only when it is unset). `.env.test` must not declare `NODE_ENV` at all — the runner selects the environment, never the file.
+The suite reads a committed `apps/.env.test`, which supplies a throwaway signing secret and keeps `pino` out of the test report. Before any test file runs, `src/test/env-setup.ts` loads that file and validates the **effective** environment with the same Zod schema the server uses — the value a shell or CI exported wins over the file, so an invalid shell override fails the gate instead of being discovered inside a worker. It also refuses two misconfigurations: a missing file, and a runner `NODE_ENV` other than `test` (Vitest defaults `NODE_ENV` to `test` only when it is unset). `.env.test` must not declare `NODE_ENV` at all — the runner selects the environment, never the file.
 
 The only requirement is network access on the first run: `pnpm install` downloads a `mongod` binary. It is cached from then on.
 

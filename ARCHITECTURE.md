@@ -53,15 +53,13 @@ The backend already handles health checks, authentication, and post operations. 
 
 ## How requests and data flow
 
-In the intended application flow, the browser loads pages from the web app, which requests JSON from the API under `/api`. The API validates requests, applies authentication and ownership rules, calls service functions, and reads or writes MongoDB through Mongoose. At present, the web app is not yet connected to that API.
+In the intended application flow, the browser loads pages from the web app, which requests JSON from the API. The API validates requests, applies authentication and ownership rules, calls service functions, and reads or writes MongoDB through Mongoose. At present, the web app is not yet connected to that API.
 
 The API entry point (`apps/api/src/index.ts`) connects to MongoDB and starts the server. Its application setup (`apps/api/src/app.ts`) installs logging, credentialed CORS, JSON and cookie parsing, routes, and error handlers. Routes use Zod schemas for request validation; services handle operations such as post ownership and linking tags. Models define users, posts, tags, and revoked sessions.
 
 The shared package contains TypeScript request and response types. It is used by the API; the web app does not yet consume these types or make API requests.
 
 ## API available today
-
-All routes below are prefixed with `/api`.
 
 | Route                                     | Access         | Purpose                                                |
 | ----------------------------------------- | -------------- | ------------------------------------------------------ |

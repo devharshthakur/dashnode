@@ -7,12 +7,12 @@ import { api } from '#test/app'
 import { createUser } from '#test/factories'
 import { AUTH_COOKIE_NAME, signSessionToken } from '#utils/auth'
 
-// `GET /api/auth/me` is the shortest protected route: `requireAuth` either
+// `GET /auth/me` is the shortest protected route: `requireAuth` either
 // answers it or lets it run, so the middleware is what is under test here.
 // Valid sessions, replay, and deleted users are exercised through the route
 // suites; this file covers the middleware's own rejection reasons and its
 // database-failure behavior.
-const PROTECTED = '/api/auth/me'
+const PROTECTED = '/auth/me'
 const UNAUTHORIZED = { error: 'Unauthorized' }
 
 function withCookie(token: string) {

@@ -32,7 +32,7 @@ async function sessionWithProfile(fields: {
   return loggedInSession({ email: user.email, password: TEST_PASSWORD })
 }
 
-describe('GET /api/users/:id', () => {
+describe('GET /users/:id', () => {
   it('answers 200 with a public profile and a page of posts', async () => {
     const user = await createUser({
       name: 'Ada Lovelace',
@@ -41,7 +41,7 @@ describe('GET /api/users/:id', () => {
     })
     const post = await createPost(user)
 
-    const response = await api().get(`/api/users/${user.id}`)
+    const response = await api().get(`/users/${user.id}`)
 
     expect(response.status).toBe(200)
     expect(response.body.user).toEqual({
@@ -69,7 +69,7 @@ describe('GET /api/users/:id', () => {
     await createPost(user, { status: 'draft' })
     await createPost(other, { status: 'published' })
 
-    const response = await api().get(`/api/users/${user.id}`)
+    const response = await api().get(`/users/${user.id}`)
 
     expect(response.body.posts.map((post: { id: string }) => post.id)).toEqual([
       published.id,
@@ -77,9 +77,9 @@ describe('GET /api/users/:id', () => {
   })
 
   it('answers 400 for an id that is not an ObjectId and 404 for an unknown one', async () => {
-    const malformed = await api().get('/api/users/not-an-id')
+    const malformed = await api().get('/users/not-an-id')
     const unknown = await api().get(
-      `/api/users/${new Types.ObjectId().toHexString()}`,
+      `/users/${new Types.ObjectId().toHexString()}`,
     )
 
     expect(malformed.status).toBe(400)
@@ -96,11 +96,9 @@ describe('GET /api/users/:id', () => {
       createPost(user, { publishedAt: new Date('2024-03-01T00:00:00.000Z') }),
     ])
 
-    const page = await api().get(`/api/users/${user.id}?limit=2`)
-    const badLimit = await api().get(`/api/users/${user.id}?limit=51`)
-    const badCursor = await api().get(
-      `/api/users/${user.id}?cursor=not-a-cursor`,
-    )
+    const page = await api().get(`/users/${user.id}?limit=2`)
+    const badLimit = await api().get(`/users/${user.id}?limit=51`)
+    const badCursor = await api().get(`/users/${user.id}?cursor=not-a-cursor`)
 
     expect(page.body.posts).toHaveLength(2)
     expect(page.body.nextCursor).not.toBeNull()
@@ -111,7 +109,7 @@ describe('GET /api/users/:id', () => {
     // the second page here proves the route forwards it rather than only the
     // service reconstructing one.
     const second = await api().get(
-      `/api/users/${user.id}?limit=2&cursor=${page.body.nextCursor}`,
+      `/users/${user.id}?limit=2&cursor=${page.body.nextCursor}`,
     )
 
     expect(second.status).toBe(200)
@@ -124,10 +122,10 @@ describe('GET /api/users/:id', () => {
   })
 })
 
-describe('PUT /api/users/me', () => {
+describe('PUT /users/me', () => {
   it('answers 401 without a session', async () => {
     const response = await api()
-      .put('/api/users/me')
+      .put('/users/me')
       .set('Origin', ORIGIN)
       .send({ bio: 'New bio' })
 
@@ -138,7 +136,7 @@ describe('PUT /api/users/me', () => {
     const signedIn = await session()
 
     const response = await signedIn.agent
-      .put('/api/users/me')
+      .put('/users/me')
       .set('Origin', FOREIGN_ORIGIN)
       .send({ bio: 'New bio' })
 
@@ -155,7 +153,7 @@ describe('PUT /api/users/me', () => {
     })
 
     const response = await signedIn.agent
-      .put('/api/users/me')
+      .put('/users/me')
       .set('Origin', ORIGIN)
       .send({ bio: 'New bio' })
 
@@ -184,7 +182,7 @@ describe('PUT /api/users/me', () => {
     const signedIn = await session()
 
     const response = await signedIn.agent
-      .put('/api/users/me')
+      .put('/users/me')
       .set('Origin', ORIGIN)
       .send(body)
 
@@ -199,7 +197,7 @@ describe('PUT /api/users/me', () => {
     })
 
     const response = await signedIn.agent
-      .put('/api/users/me')
+      .put('/users/me')
       .set('Origin', ORIGIN)
       .send({ avatarUrl: '' })
 
@@ -216,7 +214,7 @@ describe('PUT /api/users/me', () => {
 
     await User.deleteOne({ _id: signedIn.user.id })
     const response = await signedIn.agent
-      .put('/api/users/me')
+      .put('/users/me')
       .set('Origin', ORIGIN)
       .send({ bio: 'New bio' })
 
