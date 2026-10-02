@@ -5,8 +5,8 @@ import {
   useQueryClient,
 } from '@tanstack/react-query'
 
-import { apiRequest } from '#/lib/api'
-import { getCurrentUserFn } from '#/lib/current-user'
+import { apiRequest } from '#/lib/config/axios'
+import { getCurrentUser } from '#/lib/auth-gaurd'
 
 /** The signed-in account, as `GET /auth/me` returns it. */
 export interface SessionUser {
@@ -35,12 +35,12 @@ export const sessionQueryKey = ['session'] as const
 // The session is read through the server on both sides of hydration: the API's
 // `/auth/me` is asked for while the page renders on the server, and in the
 // browser afterwards. A `401` is the API's way of saying "no session", which
-// `getCurrentUserFn` reports as `null`; anything else — a network fault, a `500` —
+// `getCurrentUser` reports as `null`; anything else — a network fault, a `500` —
 // is left to throw, so the query keeps an error state to show instead of a false
 // "signed out".
 export const sessionQueryOptions = queryOptions({
   queryKey: sessionQueryKey,
-  queryFn: getCurrentUserFn,
+  queryFn: getCurrentUser,
   retry: false,
   staleTime: 30_000,
 })

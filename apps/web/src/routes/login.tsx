@@ -19,12 +19,12 @@ import {
 } from '#/components/ui/field'
 import { Input } from '#/components/ui/input'
 import { Spinner } from '#/components/ui/spinner'
+import { authGaurd } from '#/lib/auth-gaurd'
 import { loginSchema } from '#/lib/schemas/auth'
 import { useLogin } from '#/lib/session'
-import { requireGuest } from '#/lib/session-guard'
 
 export const Route = createFileRoute('/login')({
-  beforeLoad: requireGuest,
+  beforeLoad: () => authGaurd('guest'),
   // The guard renders differently for a visitor who already has a session, so
   // the response is per-visitor and no shared cache may keep a copy of it.
   headers: () => ({ 'Cache-Control': 'private, no-store' }),

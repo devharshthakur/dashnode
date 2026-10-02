@@ -12,11 +12,11 @@ import {
   CardTitle,
 } from '#/components/ui/card'
 import { Spinner } from '#/components/ui/spinner'
+import { authGaurd } from '#/lib/auth-gaurd'
 import { useLogout } from '#/lib/session'
-import { requireAuth } from '#/lib/session-guard'
 
 export const Route = createFileRoute('/dashboard')({
-  beforeLoad: requireAuth,
+  beforeLoad: () => authGaurd('auth'),
   // The page is rendered from the session cookie, so no shared cache may keep a
   // copy of it.
   headers: () => ({ 'Cache-Control': 'private, no-store' }),
@@ -32,6 +32,13 @@ function DashboardPage() {
   // The guard verified this user before the page rendered, so there is nothing
   // to wait for and no signed-out state to recover from here.
   const { user } = Route.useRouteContext()
+
+  if (!user) {
+    // Unreachable: the guard above redirects anyone without a session. The
+    // context types `user` as nullable because the same guard guards
+    // guest-only routes too, where there is no user to hand over.
+    return null
+  }
 
   return (
     <main className="mx-auto flex w-full max-w-6xl flex-1 items-center justify-center px-4 py-16">
