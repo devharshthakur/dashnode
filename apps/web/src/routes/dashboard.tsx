@@ -14,7 +14,6 @@ import { authGaurd } from '#lib/auth-gaurd'
 
 export const Route = createFileRoute('/dashboard')({
   beforeLoad: () => authGaurd('auth'),
-  // Rendered from the session cookie, so shared caches must not keep a copy.
   headers: () => ({ 'Cache-Control': 'private, no-store' }),
   errorComponent: SessionVerificationError,
   component: DashboardPage,
@@ -22,12 +21,9 @@ export const Route = createFileRoute('/dashboard')({
 })
 
 function DashboardPage() {
-  // Verified by the guard before render, so there is no signed-out state here.
   const { user } = Route.useRouteContext()
 
   if (!user) {
-    // Unreachable: the guard redirects anyone without a session. The type is
-    // nullable because the same guard also serves guest-only routes.
     return null
   }
 
