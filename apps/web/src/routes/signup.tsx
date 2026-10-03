@@ -25,8 +25,7 @@ import { useSignup } from '#lib/session'
 
 export const Route = createFileRoute('/signup')({
   beforeLoad: () => authGaurd('guest'),
-  // The guard renders differently per visitor, so no shared cache may keep it.
-  headers: () => ({ 'Cache-Control': 'private, no-store' }),
+  headers: () => ({ 'Cache-Control': 'private, no-store' }), // The guard renders differently per visitor, so no shared cache may keep it.
   errorComponent: SessionVerificationError,
   component: SignupPage,
   head: () => ({ meta: [{ title: 'Create an account — DashNode' }] }),
