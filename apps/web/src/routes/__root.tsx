@@ -2,13 +2,14 @@ import {
   HeadContent,
   Scripts,
   createRootRouteWithContext,
+  useRouterState,
 } from '@tanstack/react-router'
 import { TanStackRouterDevtoolsPanel } from '@tanstack/react-router-devtools'
 import { TanStackDevtools } from '@tanstack/react-devtools'
 
 import { NotFound } from '#/components/not-found'
-import { SiteFooter } from '#/components/site-footer'
-import { SiteHeader } from '#/components/site-header'
+import { SiteFooter } from '#/components/footer'
+import { SiteHeader } from '#/components/header'
 import TanStackQueryDevtools from '../integrations/tanstack-query/devtools'
 
 import appCss from '../styles.css?url'
@@ -45,17 +46,27 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
 })
 
 function RootDocument({ children }: { children: React.ReactNode }) {
+  // The dashboard brings its own chrome — a sidebar beside the content, filling
+  // the viewport — so the marketing header and footer step aside for it.
+  const isDashboard = useRouterState({
+    select: (state) => state.location.pathname.startsWith('/dashboard'),
+  })
+
   return (
     <html lang="en">
       <head>
         <HeadContent />
       </head>
       <body>
-        <div className="flex min-h-dvh flex-col">
-          <SiteHeader />
-          {children}
-          <SiteFooter />
-        </div>
+        {isDashboard ? (
+          children
+        ) : (
+          <div className="flex min-h-dvh flex-col">
+            <SiteHeader />
+            {children}
+            <SiteFooter />
+          </div>
+        )}
         <TanStackDevtools
           config={{
             position: 'bottom-right',

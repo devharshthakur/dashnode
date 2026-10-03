@@ -19,14 +19,13 @@ import {
 } from '#/components/ui/field'
 import { Input } from '#/components/ui/input'
 import { Spinner } from '#/components/ui/spinner'
-import { authGaurd } from '#/lib/auth-gaurd'
-import { signupSchema } from '#/lib/schemas/auth'
-import { useSignup } from '#/lib/session'
+import { authGaurd } from '#lib/auth-gaurd'
+import { signupSchema } from '#lib/schemas/auth'
+import { useSignup } from '#lib/session'
 
 export const Route = createFileRoute('/signup')({
   beforeLoad: () => authGaurd('guest'),
-  // The guard renders differently per visitor, so no shared cache may keep it.
-  headers: () => ({ 'Cache-Control': 'private, no-store' }),
+  headers: () => ({ 'Cache-Control': 'private, no-store' }), // The guard renders differently per visitor, so no shared cache may keep it.
   errorComponent: SessionVerificationError,
   component: SignupPage,
   head: () => ({ meta: [{ title: 'Create an account — DashNode' }] }),

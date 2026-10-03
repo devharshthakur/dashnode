@@ -1,6 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router'
 
-import { forwardApiRequest } from '#/lib/server/api-upstream.server'
+import { forwardApiRequest } from '#lib/server/api-upstream.server'
 
 const ALLOWED_METHODS = 'GET, HEAD, POST, PUT, PATCH, DELETE'
 
