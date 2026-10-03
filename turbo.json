@@ -12,12 +12,14 @@
     },
     "dev": {
       "cache": false,
-      "persistent": true
+      "persistent": true,
+      "passThroughEnv": ["API_UPSTREAM_URL"]
     },
     "preview": {
       "dependsOn": ["build"],
       "cache": false,
-      "persistent": true
+      "persistent": true,
+      "passThroughEnv": ["API_UPSTREAM_URL"]
     },
     "lint": {
       "dependsOn": ["transit"],
