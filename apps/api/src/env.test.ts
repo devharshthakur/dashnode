@@ -59,6 +59,9 @@ describe('env file selection', () => {
   it.each([
     ['with no NODE_ENV set', undefined],
     ['with NODE_ENV=development', 'development'],
+    // A local production run (`pnpm preview`) has no injected values, so it reads
+    // the same file; `loadEnvFile` leaves anything a platform already set alone.
+    ['with NODE_ENV=production', 'production'],
   ])('loads `.env` %s', async (_case, nodeEnv) => {
     if (nodeEnv !== undefined) {
       vi.stubEnv('NODE_ENV', nodeEnv)
@@ -81,12 +84,11 @@ describe('env file selection', () => {
     expect(basename(loadEnvFile.mock.calls[0]?.[0] ?? '')).toBe('.env.test')
   })
 
-  it('loads no file with NODE_ENV=production', async () => {
+  it('loads no file when the resolved one is absent', async () => {
     vi.stubEnv('NODE_ENV', 'production')
 
     const env = await importEnv()
 
-    expect(existsSync).not.toHaveBeenCalled()
     expect(loadEnvFile).not.toHaveBeenCalled()
     expect(env.NODE_ENV).toBe('production')
   })

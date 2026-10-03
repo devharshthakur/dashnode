@@ -13,8 +13,9 @@ const envFileByName: Record<string, string | undefined> = {
   test: '.env.test',
   development: '.env',
   // Railway and Vercel inject the real production values, and `SETUP.md` keeps
-  // them out of the repository.
-  production: undefined,
+  // them out of the repository. A local production run has none, so it reads the
+  // same file; `loadEnvFile` below leaves an injected value alone.
+  production: '.env',
 }
 
 const envFile = envFileByName[process.env.NODE_ENV ?? 'development']
