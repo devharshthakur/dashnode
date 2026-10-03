@@ -1,6 +1,8 @@
 import {
+  queryOptions,
   useInfiniteQuery,
   useMutation,
+  useQuery,
   useQueryClient,
 } from '@tanstack/react-query'
 
@@ -8,6 +10,7 @@ import { apiRequest } from '#lib/config/axios'
 
 import type {
   CreatePostInput,
+  PostDetailResponse,
   PostListResponse,
   PostResponse,
 } from '@packages/shared'
@@ -16,6 +19,18 @@ import type {
 const FEED_PAGE_SIZE = 10
 
 export const feedQueryKey = ['posts', 'feed'] as const
+
+export function postQueryOptions(slug: string) {
+  return queryOptions({
+    queryKey: ['posts', 'detail', slug] as const,
+    queryFn: () =>
+      apiRequest<PostDetailResponse>(`/posts/${encodeURIComponent(slug)}`),
+  })
+}
+
+export function usePostBySlug(slug: string) {
+  return useQuery(postQueryOptions(slug))
+}
 
 /**
  * The published feed, read a page at a time. `pageParam` is the API's opaque

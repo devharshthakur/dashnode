@@ -1,3 +1,5 @@
+import { Link } from '@tanstack/react-router'
+
 import { Avatar, AvatarFallback, AvatarImage } from '#/components/ui/avatar'
 import { Badge } from '#/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '#/components/ui/card'
@@ -13,10 +15,6 @@ function initial(name: string): string {
   return name.trim().slice(0, 1).toUpperCase() || '?'
 }
 
-/**
- * One post as the feed shows it. Nothing here links to the post: a detail route
- * does not exist yet, and a card that leads nowhere is worse than plain text.
- */
 export function PostCard({ post }: { post: PostCardDto }) {
   const date = post.publishedAt ?? post.createdAt
 
@@ -31,7 +29,15 @@ export function PostCard({ post }: { post: PostCardDto }) {
           />
         )}
         <CardHeader>
-          <CardTitle>{post.title}</CardTitle>
+          <CardTitle>
+            <Link
+              to="/posts/$slug"
+              params={{ slug: post.slug }}
+              className="text-foreground underline-offset-4 hover:underline"
+            >
+              {post.title}
+            </Link>
+          </CardTitle>
           <div className="mt-1 flex items-center gap-2 text-sm text-muted-foreground">
             <Avatar className="size-6">
               {post.author.avatarUrl === '' ? null : (
