@@ -4,9 +4,9 @@ import {
   createPostFormSchema,
   parseTagNames,
   toCreatePostInput,
-} from '#/lib/schemas/post'
+} from '#lib/schemas/post'
 
-import type { CreatePostFormValues } from '#/lib/schemas/post'
+import type { CreatePostFormValues } from '#lib/schemas/post'
 
 const validPost: CreatePostFormValues = {
   title: 'Building a REST API with Express',

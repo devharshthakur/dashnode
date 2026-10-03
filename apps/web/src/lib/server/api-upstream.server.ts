@@ -1,6 +1,6 @@
 import { getRequestHeader, getRequestUrl } from '@tanstack/react-start/server'
 
-import type { SessionUser } from '#/lib/session'
+import type { SessionUser } from '#lib/session'
 
 // `.server.ts` keeps this module out of the browser bundle (Start's import
 // protection rejects client imports of `*.server.*`). It holds the API's

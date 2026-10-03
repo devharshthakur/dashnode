@@ -10,7 +10,7 @@ import {
   SidebarProvider,
   SidebarTrigger,
 } from '#/components/ui/sidebar'
-import { authGaurd } from '#/lib/auth-gaurd'
+import { authGaurd } from '#lib/auth-gaurd'
 
 export const Route = createFileRoute('/dashboard')({
   beforeLoad: () => authGaurd('auth'),

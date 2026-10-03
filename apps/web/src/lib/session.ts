@@ -5,8 +5,8 @@ import {
   useQueryClient,
 } from '@tanstack/react-query'
 
-import { apiRequest } from '#/lib/config/axios'
-import { getCurrentUser } from '#/lib/auth-gaurd'
+import { apiRequest } from '#lib/config/axios'
+import { getCurrentUser } from '#lib/auth-gaurd'
 
 /** The signed-in account, as `GET /auth/me` returns it. */
 export interface SessionUser {

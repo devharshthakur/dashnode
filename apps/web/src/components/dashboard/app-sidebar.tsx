@@ -31,9 +31,9 @@ import {
   SidebarSeparator,
 } from '#/components/ui/sidebar'
 import { Spinner } from '#/components/ui/spinner'
-import { useLogout } from '#/lib/session'
+import { useLogout } from '#lib/session'
 
-import type { SessionUser } from '#/lib/session'
+import type { SessionUser } from '#lib/session'
 import type { LucideIcon } from 'lucide-react'
 
 // Only routes that exist are listed: a menu entry that leads nowhere is worse

@@ -4,7 +4,7 @@ import {
   useQueryClient,
 } from '@tanstack/react-query'
 
-import { apiRequest } from '#/lib/config/axios'
+import { apiRequest } from '#lib/config/axios'
 
 import type {
   CreatePostInput,

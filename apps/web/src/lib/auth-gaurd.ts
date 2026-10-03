@@ -1,5 +1,5 @@
 import { redirect } from '@tanstack/react-router'
-import type { SessionUser } from '#/lib/session'
+import type { SessionUser } from '#lib/session'
 import { createServerFn } from '@tanstack/react-start'
 
 // Guards verify the session through the server on every evaluation, so a server
@@ -39,7 +39,7 @@ export async function authGaurd(
 export const getCurrentUser = createServerFn({ method: 'GET' }).handler(
   async (): Promise<SessionUser | null> => {
     const { getCurrentUserFromRequest } =
-      await import('#/lib/server/api-upstream.server')
+      await import('#lib/server/api-upstream.server')
 
     return getCurrentUserFromRequest()
   },

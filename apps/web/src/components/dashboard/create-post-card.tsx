@@ -31,11 +31,11 @@ import { Input } from '#/components/ui/input'
 import { Spinner } from '#/components/ui/spinner'
 import { Textarea } from '#/components/ui/textarea'
 import { ToggleGroup, ToggleGroupItem } from '#/components/ui/toggle-group'
-import { ApiError } from '#/lib/config/axios'
-import { useCreatePost } from '#/lib/posts'
-import { createPostFormSchema, toCreatePostInput } from '#/lib/schemas/post'
+import { ApiError } from '#lib/config/axios'
+import { useCreatePost } from '#lib/posts'
+import { createPostFormSchema, toCreatePostInput } from '#lib/schemas/post'
 
-import type { CreatePostFormValues } from '#/lib/schemas/post'
+import type { CreatePostFormValues } from '#lib/schemas/post'
 
 // Annotated rather than written inline: an untyped default value would widen
 // `status` to `string`, which the form's validator then no longer matches.

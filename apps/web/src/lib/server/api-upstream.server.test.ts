@@ -16,9 +16,9 @@ import {
   resolveForwardedOrigin,
   stripCookieDomain,
   toUpstreamPathname,
-} from '#/lib/server/api-upstream.server'
+} from '#lib/server/api-upstream.server'
 
-import type { SessionUser } from '#/lib/session'
+import type { SessionUser } from '#lib/session'
 
 // The real Start runtime only resolves inside a running server, so mock the two
 // helpers the module reads. `vi.mock` is hoisted above the import, so the module

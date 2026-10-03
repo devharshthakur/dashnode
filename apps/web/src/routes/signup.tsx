@@ -19,9 +19,9 @@ import {
 } from '#/components/ui/field'
 import { Input } from '#/components/ui/input'
 import { Spinner } from '#/components/ui/spinner'
-import { authGaurd } from '#/lib/auth-gaurd'
-import { signupSchema } from '#/lib/schemas/auth'
-import { useSignup } from '#/lib/session'
+import { authGaurd } from '#lib/auth-gaurd'
+import { signupSchema } from '#lib/schemas/auth'
+import { useSignup } from '#lib/session'
 
 export const Route = createFileRoute('/signup')({
   beforeLoad: () => authGaurd('guest'),

@@ -12,8 +12,8 @@ import {
 } from '#/components/ui/empty'
 import { Skeleton } from '#/components/ui/skeleton'
 import { Spinner } from '#/components/ui/spinner'
-import { ApiError } from '#/lib/config/axios'
-import { useFeedPosts } from '#/lib/posts'
+import { ApiError } from '#lib/config/axios'
+import { useFeedPosts } from '#lib/posts'
 
 /** Placeholders in the shape of a card, so the feed does not jump when it lands. */
 function FeedSkeleton() {

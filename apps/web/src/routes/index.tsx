@@ -13,7 +13,7 @@ import {
   CardHeader,
   CardTitle,
 } from '#/components/ui/card'
-import { useSession } from '#/lib/session'
+import { useSession } from '#lib/session'
 
 export const Route = createFileRoute('/')({
   component: LandingPage,
