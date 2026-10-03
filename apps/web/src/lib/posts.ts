@@ -18,8 +18,15 @@ import type {
 /** Posts per page, as the API's own default page size. */
 const FEED_PAGE_SIZE = 10
 
+/** Root query key for the published feed, so mutations can invalidate it. */
 export const feedQueryKey = ['posts', 'feed'] as const
 
+/**
+ * Builds the query options for a single post.
+ *
+ * @param slug - URL slug of the post to read.
+ * @returns TanStack Query options that read `GET /posts/:slug`.
+ */
 export function postQueryOptions(slug: string) {
   return queryOptions({
     queryKey: ['posts', 'detail', slug] as const,
@@ -28,14 +35,22 @@ export function postQueryOptions(slug: string) {
   })
 }
 
+/**
+ * Reads a single post by its slug.
+ *
+ * @param slug - URL slug of the post to read.
+ * @returns The query for the requested post.
+ */
 export function usePostBySlug(slug: string) {
   return useQuery(postQueryOptions(slug))
 }
 
 /**
- * The published feed, read a page at a time. `pageParam` is the API's opaque
+ * Reads the published feed a page at a time. `pageParam` is the API's opaque
  * cursor, passed back untouched; it is `undefined` for the first page and the
  * feed ends when the API answers with no cursor.
+ *
+ * @returns An infinite query over `GET /posts`.
  */
 export function useFeedPosts() {
   return useInfiniteQuery({
@@ -49,6 +64,14 @@ export function useFeedPosts() {
   })
 }
 
+/**
+ * Publishes a new post.
+ *
+ * On success the feed is invalidated: a published post joins it, while a draft
+ * changes nothing the feed can show.
+ *
+ * @returns The create-post mutation for `POST /posts`.
+ */
 export function useCreatePost() {
   const queryClient = useQueryClient()
 
@@ -56,8 +79,6 @@ export function useCreatePost() {
     mutationFn: (input: CreatePostInput) =>
       apiRequest<PostResponse>('/posts', { method: 'POST', data: input }),
     onSuccess: () => {
-      // A published post joins the feed, so the page it was written on has to
-      // read it again. A draft changes nothing the feed can show.
       void queryClient.invalidateQueries({ queryKey: feedQueryKey })
     },
   })
