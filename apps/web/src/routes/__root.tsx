@@ -8,8 +8,8 @@ import { TanStackRouterDevtoolsPanel } from '@tanstack/react-router-devtools'
 import { TanStackDevtools } from '@tanstack/react-devtools'
 
 import { NotFound } from '#/components/not-found'
-import { SiteFooter } from '#/components/site-footer'
-import { SiteHeader } from '#/components/site-header'
+import { SiteFooter } from '#/components/footer'
+import { SiteHeader } from '#/components/header'
 import TanStackQueryDevtools from '../integrations/tanstack-query/devtools'
 
 import appCss from '../styles.css?url'
