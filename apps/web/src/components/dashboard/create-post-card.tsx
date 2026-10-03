@@ -90,21 +90,18 @@ export function CreatePostCard() {
               <AlertDescription>{notice}</AlertDescription>
             </Alert>
           )}
-          <Dialog
-            open={open}
-            onOpenChange={(next) => {
-              setOpen(next)
-              // Closing discards the composer, so it never reopens holding a
-              // half-written post — including the one just saved.
-              if (!next) {
-                form.reset()
-              }
-            }}
-          >
+          <Dialog open={open} onOpenChange={setOpen}>
+            {/*
+             * The composer is emptied when it opens, not when it closes. A
+             * successful save closes it from here rather than through Base UI,
+             * so a close handler would never run for that case and the next
+             * open would still be holding the post just saved.
+             */}
             <Button
               onClick={() => {
-                setNotice(null)
+                form.reset()
                 createPost.reset()
+                setNotice(null)
                 setOpen(true)
               }}
             >
