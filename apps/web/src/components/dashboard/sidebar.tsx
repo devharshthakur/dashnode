@@ -113,10 +113,6 @@ export function AppSidebar({ user }: { user: SessionUser }) {
                 </div>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" side="right" className="w-56">
-                {/*
-                 * The label is Base UI's `Menu.GroupLabel`, so it needs the
-                 * group around it like the items below do.
-                 */}
                 <DropdownMenuGroup>
                   <DropdownMenuLabel>{user.email}</DropdownMenuLabel>
                 </DropdownMenuGroup>

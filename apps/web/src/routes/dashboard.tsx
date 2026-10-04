@@ -1,6 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router'
 
-import { AppSidebar } from '#/components/dashboard/app-sidebar'
+import { AppSidebar } from '#/components/dashboard/sidebar'
 import { CreatePostCard } from '#/components/dashboard/create-post-card'
 import { PostFeed } from '#/components/dashboard/post-feed'
 import { SessionVerificationError } from '#/components/session-error'
