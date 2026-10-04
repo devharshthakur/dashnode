@@ -1,10 +1,10 @@
 {
-  "name": "hashnode-clone",
+  "name": "dashnode",
   "version": "1.0.0",
   "private": true,
   "description": "Full-stack developer blogging platform inspired by Hashnode — write and publish Markdown-based technical blogs with syntax-highlighted code, technology tags, drafts, JWT authentication and a public developer feed.",
   "keywords": [
-    "hashnode-clone",
+    "dashnode",
     "blogging-platform",
     "developer-blog",
     "mern",
@@ -33,11 +33,11 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/devharshthakur/hashnode-clone.git"
+    "url": "git+https://github.com/devharshthakur/dashnode.git"
   },
-  "homepage": "https://github.com/devharshthakur/hashnode-clone#readme",
+  "homepage": "https://github.com/devharshthakur/dashnode#readme",
   "bugs": {
-    "url": "https://github.com/devharshthakur/hashnode-clone/issues"
+    "url": "https://github.com/devharshthakur/dashnode/issues"
   },
   "scripts": {
     "dev": "turbo run dev",

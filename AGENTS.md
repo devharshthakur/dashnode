@@ -1,6 +1,6 @@
 This file provides guidance to AI coding agents like Claude Code (claude.ai/code), Cursor AI, Codex, Gemini CLI, GitHub Copilot, and other AI coding assistants when working with code in this repository.
 
-# Hashnode Clone
+# DashNode
 
 pnpm + Turborepo monorepo with `apps/web` (TanStack Start/React; not yet connected to the API), `apps/api` (Express 5 + Mongoose), and shared/config packages. The API owns validation, authentication, and data access.
 

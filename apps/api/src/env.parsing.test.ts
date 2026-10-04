@@ -14,7 +14,7 @@ describe('envSchema', () => {
       NODE_ENV: 'development',
       PORT: 8000,
       LOG_LEVEL: 'info',
-      MONGO_URI: 'mongodb://localhost:27017/hashnode',
+      MONGO_URI: 'mongodb://localhost:27017/dashnode',
       CORS_ORIGIN: 'http://localhost:5173',
       HTTP_TIMEOUT_MS: 10_000,
     })

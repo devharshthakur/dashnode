@@ -1,9 +1,9 @@
-name: hashnode-clone
+name: dashnode
 
 services:
   mongodb:
     image: mongo:7.0
-    container_name: hashnode-mongodb
+    container_name: dashnode-mongodb
     restart: unless-stopped
     # Single-node replica set. MongoDB only allows multi-document transactions
     # (and change streams) on a replica set, so even local dev runs one.
@@ -12,7 +12,7 @@ services:
     ports:
       - '27017:27017'
     environment:
-      MONGO_INITDB_DATABASE: hashnode
+      MONGO_INITDB_DATABASE: dashnode
     volumes:
       - mongo_data:/data/db
     healthcheck:
@@ -31,7 +31,7 @@ services:
   # volumes such as /Volumes/<disk>) with "mkdir /host_mnt/...: file exists".
   mongo-init:
     image: mongo:7.0
-    container_name: hashnode-mongodb-init
+    container_name: dashnode-mongodb-init
     depends_on:
       mongodb:
         condition: service_healthy

@@ -15,7 +15,7 @@ export const envSchema = z.object({
   LOG_LEVEL: z
     .enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent'])
     .default('info'),
-  MONGO_URI: z.string().min(1).default('mongodb://localhost:27017/hashnode'),
+  MONGO_URI: z.string().min(1).default('mongodb://localhost:27017/dashnode'),
   CORS_ORIGIN: z.string().min(1).default('http://localhost:5173'),
   JWT_SECRET: z
     .string()
