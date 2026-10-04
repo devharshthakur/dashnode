@@ -1,88 +1,106 @@
 # API
 
-This Express service owns authentication, request validation, post operations, and MongoDB access. Its routes are mounted at the server root.
+The Express 5 service behind DashNode. It owns request validation, authentication, authorization, post/tag/profile logic, and all MongoDB access, and it is the only place those rules are enforced. Routers are mounted at the server root, and every document leaves through a DTO mapper in `src/utils/`.
 
-## API checklist
+Markdown is stored verbatim and never rendered here — rendering belongs to the client.
 
-Items follow the [REST API requirements](../../PRD.md#5-rest-api-specification). Checked items are implemented; the health check is an additional endpoint.
+## Layout
 
-### Health
+| Path               | Contents                                                                  |
+| ------------------ | ------------------------------------------------------------------------- |
+| `src/routes/`      | HTTP surface: validate, delegate, map domain errors to statuses           |
+| `src/schemas/`     | Zod request and environment schemas                                       |
+| `src/services/`    | Business logic and Mongoose access                                        |
+| `src/models/`      | Mongoose models                                                           |
+| `src/middlewares/` | `requireAuth`, `requireTrustedOrigin`, error and not-found handlers       |
+| `src/utils/`       | Session signing, slug and cursor helpers, transaction helper, DTO mappers |
+| `src/errors/`      | Domain error classes                                                      |
+| `src/test/`        | Test harness, factories, and Vitest projects                              |
 
-- [x] `GET /health`
+Internal imports use the `#*` aliases declared in `package.json`. Each layer depends only on the one below it, so a request reads as route → schema → service → model → mapper.
 
-### Authentication
+## Endpoints
 
-- [x] `POST /auth/register` — create an account and start a session.
-- [x] `POST /auth/login` — verify credentials and start a session.
-- [x] `GET /auth/me` — return the signed-in user's account data.
-- [x] `POST /auth/logout` — revoke the current session and clear its cookie; requires a request from a whitelisted web origin.
+Items follow the [REST API requirements](../../PRD.md#5-rest-api-specification). Checked items are implemented; `/health` is an addition.
 
-### Posts
+| Method   | Path                | Notes                                                                      |
+| -------- | ------------------- | -------------------------------------------------------------------------- |
+| `GET`    | `/health`           | Liveness check.                                                            |
+| `POST`   | `/auth/register`    | Creates an account and starts a session. `409` if the email is taken.      |
+| `POST`   | `/auth/login`       | Verifies credentials and starts a session. `401` when they do not match.   |
+| `GET`    | `/auth/me`          | The signed-in account. Requires a session.                                 |
+| `POST`   | `/auth/logout`      | Revokes the current session, clears its cookie. Requires a trusted origin. |
+| `GET`    | `/posts`            | Published posts, newest first. Supports `search` and `tag`.                |
+| `POST`   | `/posts`            | Creates a draft or published post. Session + trusted origin.               |
+| `GET`    | `/posts/:slug`      | One published post, by slug.                                               |
+| `PUT`    | `/posts/:id`        | Updates the author's own post. Session + trusted origin.                   |
+| `DELETE` | `/posts/:id`        | Deletes the author's own post. Session + trusted origin.                   |
+| `GET`    | `/posts/mine/list`  | The signed-in user's drafts and published posts, newest first.             |
+| `GET`    | `/posts/mine/:id`   | One of the signed-in user's posts, body included.                          |
+| `GET`    | `/tags`             | Tags used by published posts, with a post count each.                      |
+| `GET`    | `/tags/:slug/posts` | Published posts for one tag.                                               |
+| `GET`    | `/users/:id`        | Public profile plus one page of its published posts.                       |
+| `PUT`    | `/users/me`         | Updates the signed-in profile. Session + trusted origin.                   |
 
-- [x] `GET /posts` — list published posts, one bounded page at a time; supports title search and tag filtering.
-- [x] `GET /posts/:slug` — return a published post by slug.
-- [x] `POST /posts` — create a draft or published post; two requests for the same new title both succeed, on `title` and `title-1`.
-- [x] `PUT /posts/:id` — update the author's own post.
-- [x] `DELETE /posts/:id` — delete the author's own post.
-- [x] `GET /posts/mine/list` — list the signed-in user's drafts and published posts, one bounded page at a time.
-- [x] `GET /posts/mine/:id` — return one of the signed-in user's posts, including its Markdown body.
+Public post queries always filter `status: 'published'`, so drafts never leak; ownership is checked in the service (`loadOwnedPost`) before any mutation; and user responses omit the password hash.
 
-### Tags and users
+## Behavior worth knowing
 
-- [x] `GET /tags` — list tags on published posts, with counts of the published posts using each tag.
-- [x] `GET /tags/:slug/posts` — list published posts for a tag, one bounded page at a time.
-- [x] `GET /users/:id` — return a public profile and one bounded page of its published posts.
-- [x] `PUT /users/me` — update the signed-in user's profile; every field is optional, so one can be sent on its own.
+**Sessions.** A session is a signed JWT (`jose`) in the HttpOnly `token` cookie, valid for 7 days and revocable one at a time through `models/revoked-token.ts`. `401 Unauthorized` means the session itself was rejected — no cookie, a token that fails verification, a revoked token, or a user that no longer exists. Session verification reads from MongoDB, so a failure there is a server fault and surfaces as `500`: a client can treat `401` as proof the session ended and retry after a `500` instead of discarding a cookie that is still valid.
 
-Unlike the PRD's bearer-token flow, this API sends signed JWTs in HttpOnly cookies. Protected routes verify the session; public post results exclude drafts, update and delete enforce ownership on the server, and user responses omit password hashes. Routes, validation schemas, services, and models are organized under `src/`.
+**Write routes check the origin.** A browser attaches the session cookie to any request it is told to send, including a form POST from another site, so every route that writes for the signed-in user (`POST /posts`, `PUT`/`DELETE /posts/:id`, `PUT /users/me`, `POST /auth/logout`) requires `Origin` to be one of the `CORS_ORIGIN` entries. CORS alone is not enough: it stops a foreign page from reading the response, not from triggering the write. A request that declares no origin is refused with `403`, so non-browser clients must send the header themselves. Read-only routes are unaffected.
 
-Passwords are hashed with bcrypt, which only folds the first 72 **bytes** of a password into its hash and ignores the rest. Registration therefore requires at least 8 characters and at most 72 bytes when encoded as UTF-8, and login enforces the same 72-byte ceiling. Counting bytes rather than characters matters because a multibyte password can pass a 72-character limit and still overflow bcrypt's: 37 `é` characters are 74 bytes, and bcrypt would hash it exactly like its first 36 characters. Both endpoints answer `400 Validation Error` for a longer password rather than shortening it silently, so two visibly different passwords can never share one hash. Accounts created before this limit accepted a multibyte password that exceeded it hold a hash of that password's first 72 bytes; such a password can no longer be submitted, so those accounts need a new password.
+**Passwords are limited in bytes.** bcrypt folds only the first 72 **bytes** of a password into its hash and ignores the rest, so registration requires at least 8 characters and at most 72 bytes as UTF-8, and login enforces the same ceiling. Counting bytes matters: 37 `é` characters are 74 bytes and would hash exactly like their first 36 characters. A longer password is answered with `400 Validation Error` rather than silently shortened, so two visibly different passwords can never share a hash. Accounts created before the limit may hold a hash of a password that can no longer be submitted, and need a new password.
 
-Protected routes answer `401 Unauthorized` only when the session itself is rejected: no cookie, a token that fails verification, a token revoked by logout, or a user that no longer exists. Session verification also reads from MongoDB, and a database failure there is a server fault, so it surfaces as `500 Internal Server Error` instead. Clients can therefore treat `401` as proof the session ended and retry after a `500`, rather than discarding a cookie that is still valid.
+**Lists are keyset-paginated.** 10 posts per page by default, at most 50 via `limit`. Each response carries an opaque `nextCursor`; send it back as `cursor` and treat `null` as the end. Paging is over the ordering key plus `_id` — `publishedAt` descending for public feeds, `createdAt` descending for the dashboard — so it does not slow down with depth and ties stay stable. List queries project card fields only, so a page never reads a stored Markdown body; detail endpoints load those.
 
-Because a browser attaches the session cookie to any request it is told to send — including a form POST from another site — every route that writes on behalf of the signed-in user (`POST /posts`, `PUT /posts/:id`, `DELETE /posts/:id`, `PUT /users/me`, and `POST /auth/logout`) first checks that the request's `Origin` header is one of the `CORS_ORIGIN` entries. CORS alone is not enough: it stops a foreign site from reading the response, but not from triggering the write. A request that declares no origin is rejected with `403`, so non-browser clients calling these endpoints must send an `Origin` header themselves. Read-only routes are unaffected.
+**Published feeds order by `publishedAt`**, stamped when a post is first published (or republished after being unpublished) and left unchanged by later edits.
 
-`GET /tags` lists only tags that at least one **published** post uses, so a tag coined while writing a draft — such as `secret-project` — is not visible to a visitor until a post carrying it is published. A count of `0` is therefore not part of a response, unlike the PRD's "all available tags": showing a zero-count tag would leak a draft's tag name through the public directory. The tag document is not deleted when it drops out of the directory, so publishing the draft later brings the tag back with the count it now has, and a tag left unused by retagging or deleting its only post can be reused by name instead of being created twice. Because the directory is derived from published posts rather than read from the tag collection, it follows those transitions by itself: a draft's tag appears when the post is published and disappears when the post is unpublished, with no separate cleanup.
+**Slug races never fail a request.** A slug is derived from the title and chosen before it is stored, so two concurrent `POST /posts` calls for the same new title can pick the same one. Only a duplicate on the `slug` index is retried: the request takes a different slug and writes again, so both posts are stored (`title`, `title-1`) and neither request becomes a `5xx`. After losing more than one race it stops competing for a readable slug and appends a random token (`title-a7f3c19e02`). Any other database failure is left to the generic `500`.
 
-Public feeds order posts by `publishedAt`, which is stamped when a post is first published (or republished after being unpublished) and left unchanged by later edits.
+**The tag directory follows published posts.** `GET /tags` lists only tags at least one published post uses, so a tag coined while drafting is invisible until a post carrying it is published — a zero count is never returned, which would leak a draft's tag name. The tag document is not deleted when it drops out of the directory, so republishing brings it back with its new count and a tag left unused can be reused by name. No separate cleanup is needed.
 
-A post's slug is derived from its title and must be unique, and choosing one is a separate step from storing it, so two concurrent `POST /posts` requests for the same new title can pick the same slug. The unique index on `slug` is the final protection, and a request it rejects simply takes a different slug and writes again, so a lost race never fails the request and never becomes a `5xx`: both posts are stored, under `title` and `title-1`. Once a request has lost more than one race it stops competing for a readable slug and appends a random token to the title instead (`title-a7f3c19e02`), which no concurrent request can be holding. Only a duplicate on the slug index is handled this way; any other database failure is left to the generic `500`, so a server fault is still reported as one.
+**Image fields are validated as URLs.** A post's `coverImage` and a profile's `avatarUrl` are the only references to media this service does not host, so each accepts an absolute `http`/`https` URL of at most 2048 characters, or an empty string to clear it. Anything else — `not-a-url`, a relative or protocol-relative path, `javascript:`, `data:`, `file:` — is answered with `400 Validation Error` rather than stored and handed back as an image source. Records written before this rule keep being served.
 
-Image fields — a post's `coverImage` and a profile's `avatarUrl` — are the API's only references to media it does not host, so both accept an absolute `http` or `https` URL of at most 2048 characters, or an empty string to clear the image. A value that is not a URL at all (`not-a-url`), a relative or protocol-relative path, or another scheme (`javascript:`, `data:`, `file:`) is answered with `400 Validation Error` instead of being stored and handed back to a client as an image source. Existing records are not re-validated: a URL stored before this rule keeps being served, and the client renders it as an image link or nothing.
+**`PUT /users/me` is partial.** It takes any subset of `name`, `bio`, `avatarUrl` and sets only the fields the request carried, so changing a bio does not mean resending the name. A body with none of them is `400 Validation Error` rather than a no-op success, and the response uses the same user shape as register and login.
 
-`PUT /users/me` takes any subset of `name`, `bio`, and `avatarUrl`, and sets only the fields the request carried, so changing a bio does not require resending the name and avatar. A body with none of them is answered with `400 Validation Error` rather than a no-op success. Responses come from the same user shape as registration and login, which never includes the password hash.
+**Request bodies are JSON, capped at 1 MB.** Malformed JSON is `400 Bad Request`, an oversized body `413 Payload Too Large`, an unsupported charset or content encoding `415 Unsupported Media Type`; each carries only that status message. Everything else that throws becomes a generic `500 Internal Server Error` with no stack trace. So `400` on a write is always a request to fix and resend, never a transient condition to retry.
 
-Request bodies are parsed as JSON and capped at 1 MB. A body the parser refuses is the client's mistake, not a server fault: malformed JSON gets `400 Bad Request`, a body over the limit gets `413 Payload Too Large`, and an unsupported charset or content encoding gets `415 Unsupported Media Type`. Each response carries only that status message. Anything else that throws is answered with a generic `500 Internal Server Error` and no stack trace, so an unexpected failure never leaks internals. `400` on a write is therefore always a request the client should fix and resend, never a transient condition to retry.
+## Configuration
 
-Every endpoint that lists posts returns a bounded page: 10 posts by default and at most 50 per request through `limit`. Each response carries an opaque `nextCursor`; send it back as `cursor` to read the next page, and treat `null` as the end of the list. Lists are keyset-paginated over their ordering key plus `_id` (`publishedAt` descending for public feeds, `createdAt` descending for the dashboard), so paging does not slow down with depth and ties keep a stable order. The queries also project only card fields, so a page never reads stored Markdown bodies; post bodies are loaded by the detail endpoints only.
+`src/env.ts` validates the environment at startup and exits on failure. The file a run reads is chosen by `NODE_ENV`: `.env.test` for tests, `.env` for development and for a local production run, and a deployment relies on the values its platform injects, which are never overwritten.
 
-To run the API locally, configure its environment and start MongoDB as described in the [development setup](../../SETUP.md), then run `pnpm --filter api dev` from the repository root.
+| Variable          | Required | Purpose                                           |
+| ----------------- | -------- | ------------------------------------------------- |
+| `JWT_SECRET`      | yes      | Signs session JWTs, at least 32 characters        |
+| `MONGO_URI`       | no       | Connection string; defaults to the local database |
+| `PORT`            | no       | Defaults to `8000`                                |
+| `CORS_ORIGIN`     | no       | Comma-separated origins allowed to call the API   |
+| `LOG_LEVEL`       | no       | pino level; `info` by default                     |
+| `HTTP_TIMEOUT_MS` | no       | Timeout for the shared outbound client            |
+| `HTTP_BASE_URL`   | no       | Base URL for that client                          |
+
+```bash
+cp apps/api/.env.example apps/api/.env   # then set JWT_SECRET: openssl rand -base64 32
+pnpm --filter api db:up                 # MongoDB as a single-node replica set
+pnpm --filter api dev                   # http://localhost:8000
+```
+
+MongoDB must be a replica set, because post and tag writes run in transactions. `pnpm --filter api build` bundles with tsdown to `build/index.mjs`, which `pnpm --filter api start` runs. See [development setup](../../SETUP.md) for the full picture.
 
 ## Testing
 
-The suite is [Vitest](https://vitest.dev). It lives in `apps/api`, and every test file sits next to the source it covers (`src/services/post.test.ts` for `src/services/post.ts`).
+[Vitest](https://vitest.dev), with every test file next to the source it covers (`src/services/post.test.ts` for `src/services/post.ts`). `pnpm test` needs no `db:up`, no Docker, and no `.env` — the only requirement is network access on the first install, which downloads a `mongod` binary.
 
-```bash
-pnpm test                                  # once
-pnpm test:watch                            # re-runs on change
-pnpm --filter api test:coverage            # with a coverage report
-```
+The suite runs as two projects listed in `src/test/projects.ts`: **pure** (schemas, pure utilities, environment parsing, the origin middleware) touches no database, and **database** starts one **in-memory MongoDB replica set** for the whole run (`src/test/global-setup.ts`; `src/test/setup.ts` connects Mongoose, builds the unique indexes, and empties collections between tests). A replica set rather than a plain in-memory server because transactions are only allowed on a replica set member. A committed `.env.test` supplies a throwaway signing secret, and `src/test/env-setup.ts` validates the effective environment with the same schema the server uses before any test runs — a shell override wins over the file, so an invalid one fails the gate rather than surfacing inside a worker.
 
-Nothing has to be set up first. `pnpm test` needs no `pnpm --filter api db:up`, no Docker, and no `apps/.env`. The suite runs as two Vitest projects: the **pure** project (schemas, pure utilities, environment parsing, the origin middleware) touches no database at all, and the **database** project starts one **in-memory MongoDB replica set** for the whole run — `src/test/global-setup.ts` — and `src/test/setup.ts` connects Mongoose, builds the unique indexes before the first test, and empties the collections between tests. A replica set rather than a plain in-memory server because post and tag writes run in transactions, which MongoDB only allows on a replica set member. The file lists for each project live in `src/test/projects.ts`.
+Write tests through `src/test/`:
 
-The suite reads a committed `apps/.env.test`, which supplies a throwaway signing secret and keeps `pino` out of the test report. Before any test file runs, `src/test/env-setup.ts` loads that file and validates the **effective** environment with the same Zod schema the server uses — the value a shell or CI exported wins over the file, so an invalid shell override fails the gate instead of being discovered inside a worker. It also refuses two misconfigurations: a missing file, and a runner `NODE_ENV` other than `test` (Vitest defaults `NODE_ENV` to `test` only when it is unset). `.env.test` must not declare `NODE_ENV` at all — the runner selects the environment, never the file.
+| Helper                                      | What it gives you                                                            |
+| ------------------------------------------- | ---------------------------------------------------------------------------- |
+| `api()`                                     | the whole app from `App()`, for one request, with no port bound              |
+| `registeredSession()` / `loggedInSession()` | a `supertest` agent that keeps its cookie, plus the raw token for a replay   |
+| `trustedOrigin()`                           | the `Origin` a state-changing request needs                                  |
+| `createUser` / `createPost` / `createTag`   | documents with unique emails and slugs, so a test cannot collide with itself |
 
-The only requirement is network access on the first run: `pnpm install` downloads a `mongod` binary. It is cached from then on.
-
-Write tests through the helpers in `src/test/`:
-
-| Helper                                      | What it gives you                                                                             |
-| ------------------------------------------- | --------------------------------------------------------------------------------------------- |
-| `api()`                                     | the whole app from `App()`, for one request — no port bound                                   |
-| `registeredSession()` / `loggedInSession()` | a `supertest` agent that keeps its session cookie, plus the raw token for a deliberate replay |
-| `trustedOrigin()`                           | the `Origin` value every state-changing request needs                                         |
-| `createUser` / `createPost` / `createTag`   | documents with unique emails and slugs, so a test never collides with itself                  |
-
-A test file that opens its own connection, or that stubs the session cookie, is testing something other than what ships. `pnpm validate` from the repository root runs the suite alongside lint, formatting, and type checks.
-
-There is no coverage threshold. The suite is here to pin behavior — ownership enforcement, draft isolation, the slug retry, the `401`-versus-`500` split — and a threshold set from the current measurement would only pass by accident.
+A test that opens its own connection, or that stubs the session cookie, is testing something other than what ships. `pnpm validate` from the repository root runs this suite alongside lint, formatting, and type checks. There is no coverage threshold: the suite pins behavior — ownership enforcement, draft isolation, the slug retry, the `401`-versus-`500` split — and a threshold taken from a measurement would only pass by accident.
