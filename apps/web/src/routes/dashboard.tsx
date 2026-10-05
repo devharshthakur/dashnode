@@ -52,7 +52,7 @@ function DashboardPage() {
               <p className="text-sm text-muted-foreground">
                 Share an idea with the DashNode community.
               </p>
-              <Button render={<Link to="/new-post" />}>
+              <Button render={<Link to="/posts/new" />}>
                 <PenLineIcon data-icon="inline-start" />
                 Create post
               </Button>

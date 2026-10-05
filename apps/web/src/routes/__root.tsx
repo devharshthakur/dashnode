@@ -51,7 +51,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
   const isDashboard = useRouterState({
     select: (state) =>
       state.location.pathname.startsWith('/dashboard') ||
-      state.location.pathname === '/new-post',
+      state.location.pathname === '/posts/new',
   })
 
   return (
