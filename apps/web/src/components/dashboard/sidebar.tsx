@@ -43,12 +43,8 @@ import { useLogout } from '#lib/session'
 import type { SessionUser } from '#lib/session'
 import type { LucideIcon } from 'lucide-react'
 
-// Only routes that exist are listed: a menu entry that leads nowhere is worse
-// than no entry. A page added later gets its own item here.
 const navigation: { title: string; to: string; icon: LucideIcon }[] = [
   { title: 'Feed', to: '/dashboard', icon: RssIcon },
-  { title: 'Write', to: '/posts/new', icon: PenLineIcon },
-  { title: 'Home', to: '/', icon: HomeIcon },
 ]
 
 /** First character of a name, for the avatar placeholder. */
