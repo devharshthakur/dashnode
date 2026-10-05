@@ -46,7 +46,7 @@ import type { LucideIcon } from 'lucide-react'
 // than no entry. A page added later gets its own item here.
 const navigation: { title: string; to: string; icon: LucideIcon }[] = [
   { title: 'Feed', to: '/dashboard', icon: RssIcon },
-  { title: 'Write', to: '/new-post', icon: PenLineIcon },
+  { title: 'Write', to: '/posts/new', icon: PenLineIcon },
   { title: 'Home', to: '/', icon: HomeIcon },
 ]
 

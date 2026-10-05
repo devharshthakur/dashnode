@@ -13,7 +13,7 @@ import {
 } from '#/components/ui/sidebar'
 import { authGaurd } from '#lib/auth-gaurd'
 
-export const Route = createFileRoute('/new-post')({
+export const Route = createFileRoute('/posts/new')({
   beforeLoad: () => authGaurd('auth'),
   headers: () => ({ 'Cache-Control': 'private, no-store' }),
   errorComponent: SessionVerificationError,
