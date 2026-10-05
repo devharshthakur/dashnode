@@ -4,7 +4,7 @@ import { ArrowLeftIcon } from 'lucide-react'
 import { AppSidebar } from '#/components/dashboard/sidebar'
 import { CreatePostForm } from '#/components/dashboard/create-post-form'
 import { SessionVerificationError } from '#/components/session-error'
-import { Button } from '#/components/ui/button'
+import { buttonVariants } from '#/components/ui/button'
 import { Separator } from '#/components/ui/separator'
 import {
   SidebarInset,
@@ -40,15 +40,17 @@ function NewPostPage() {
         <main className="flex flex-1 flex-col px-4 py-8 sm:px-8">
           <div className="mx-auto flex w-full max-w-3xl flex-col gap-8">
             <div className="flex flex-col gap-3">
-              <Button
-                variant="ghost"
-                size="sm"
-                className="-ml-2 w-fit"
-                render={<Link to="/dashboard" />}
+              <Link
+                to="/dashboard"
+                className={buttonVariants({
+                  variant: 'ghost',
+                  size: 'sm',
+                  className: '-ml-2 w-fit',
+                })}
               >
                 <ArrowLeftIcon data-icon="inline-start" />
                 Back to feed
-              </Button>
+              </Link>
               <div className="flex flex-col gap-2">
                 <h2 className="font-heading text-3xl font-semibold tracking-tight">
                   Create a post
