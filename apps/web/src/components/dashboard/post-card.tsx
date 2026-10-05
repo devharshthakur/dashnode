@@ -20,7 +20,7 @@ export function PostCard({ post }: { post: PostCardDto }) {
 
   return (
     <article>
-      <Card>
+      <Card className="wrap-anywhere">
         {post.coverImage === '' ? null : (
           <img
             src={post.coverImage}
@@ -28,7 +28,7 @@ export function PostCard({ post }: { post: PostCardDto }) {
             className="aspect-video w-full object-cover"
           />
         )}
-        <CardHeader>
+        <CardHeader className="min-w-0">
           <CardTitle>
             <Link
               to="/posts/$slug"
@@ -60,8 +60,12 @@ export function PostCard({ post }: { post: PostCardDto }) {
             {post.tags.length === 0 ? null : (
               <ul className="flex flex-wrap gap-2">
                 {post.tags.map((tag) => (
-                  <li key={tag.id}>
-                    <Badge variant="secondary">{tag.name}</Badge>
+                  <li key={tag.id} className="max-w-full">
+                    <Badge variant="secondary" className="max-w-full">
+                      <span className="truncate" title={tag.name}>
+                        {tag.name}
+                      </span>
+                    </Badge>
                   </li>
                 ))}
               </ul>
