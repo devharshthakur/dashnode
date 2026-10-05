@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as LoginRouteImport } from './routes/login'
+import { Route as NewPostRouteImport } from './routes/new-post'
 import { Route as SignupRouteImport } from './routes/signup'
 import { Route as ApiSplatRouteImport } from './routes/api/$'
 import { Route as PostsSlugRouteImport } from './routes/posts/$slug'
@@ -29,6 +30,11 @@ const DashboardRoute = DashboardRouteImport.update({
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const NewPostRoute = NewPostRouteImport.update({
+  id: '/new-post',
+  path: '/new-post',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SignupRoute = SignupRouteImport.update({
@@ -51,6 +57,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/dashboard': typeof DashboardRoute
   '/login': typeof LoginRoute
+  '/new-post': typeof NewPostRoute
   '/signup': typeof SignupRoute
   '/api/$': typeof ApiSplatRoute
   '/posts/$slug': typeof PostsSlugRoute
@@ -59,6 +66,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/dashboard': typeof DashboardRoute
   '/login': typeof LoginRoute
+  '/new-post': typeof NewPostRoute
   '/signup': typeof SignupRoute
   '/api/$': typeof ApiSplatRoute
   '/posts/$slug': typeof PostsSlugRoute
@@ -68,6 +76,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/dashboard': typeof DashboardRoute
   '/login': typeof LoginRoute
+  '/new-post': typeof NewPostRoute
   '/signup': typeof SignupRoute
   '/api/$': typeof ApiSplatRoute
   '/posts/$slug': typeof PostsSlugRoute
@@ -75,14 +84,28 @@ export interface FileRoutesById {
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
-    '/' | '/dashboard' | '/login' | '/signup' | '/api/$' | '/posts/$slug'
+    | '/'
+    | '/dashboard'
+    | '/login'
+    | '/new-post'
+    | '/signup'
+    | '/api/$'
+    | '/posts/$slug'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/dashboard' | '/login' | '/signup' | '/api/$' | '/posts/$slug'
+  to:
+    | '/'
+    | '/dashboard'
+    | '/login'
+    | '/new-post'
+    | '/signup'
+    | '/api/$'
+    | '/posts/$slug'
   id:
     | '__root__'
     | '/'
     | '/dashboard'
     | '/login'
+    | '/new-post'
     | '/signup'
     | '/api/$'
     | '/posts/$slug'
@@ -92,6 +115,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   DashboardRoute: typeof DashboardRoute
   LoginRoute: typeof LoginRoute
+  NewPostRoute: typeof NewPostRoute
   SignupRoute: typeof SignupRoute
   ApiSplatRoute: typeof ApiSplatRoute
   PostsSlugRoute: typeof PostsSlugRoute
@@ -118,6 +142,13 @@ declare module '@tanstack/react-router' {
       path: '/login'
       fullPath: '/login'
       preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/new-post': {
+      id: '/new-post'
+      path: '/new-post'
+      fullPath: '/new-post'
+      preLoaderRoute: typeof NewPostRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/signup': {
@@ -148,6 +179,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   DashboardRoute: DashboardRoute,
   LoginRoute: LoginRoute,
+  NewPostRoute: NewPostRoute,
   SignupRoute: SignupRoute,
   ApiSplatRoute: ApiSplatRoute,
   PostsSlugRoute: PostsSlugRoute,

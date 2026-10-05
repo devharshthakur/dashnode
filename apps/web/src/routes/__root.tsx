@@ -46,10 +46,12 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
 })
 
 function RootDocument({ children }: { children: React.ReactNode }) {
-  // The dashboard brings its own chrome — a sidebar beside the content, filling
-  // the viewport — so the marketing header and footer step aside for it.
+  // The writing workspace brings its own chrome, so the marketing header and
+  // footer step aside for dashboard and post creation routes.
   const isDashboard = useRouterState({
-    select: (state) => state.location.pathname.startsWith('/dashboard'),
+    select: (state) =>
+      state.location.pathname.startsWith('/dashboard') ||
+      state.location.pathname === '/new-post',
   })
 
   return (
