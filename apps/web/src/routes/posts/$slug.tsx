@@ -121,7 +121,7 @@ function PostPage() {
           Back to posts
         </Link>
         <article>
-          <Card>
+          <Card className="wrap-anywhere">
             {post.coverImage === '' ? null : (
               <img
                 src={post.coverImage}
@@ -129,13 +129,17 @@ function PostPage() {
                 className="aspect-video w-full object-cover"
               />
             )}
-            <CardHeader>
-              <div className="flex w-full flex-col gap-5">
+            <CardHeader className="min-w-0">
+              <div className="flex w-full min-w-0 flex-col gap-5">
                 {post.tags.length === 0 ? null : (
                   <ul className="flex flex-wrap gap-2" aria-label="Post tags">
                     {post.tags.map((tag) => (
-                      <li key={tag.id}>
-                        <Badge variant="secondary">{tag.name}</Badge>
+                      <li key={tag.id} className="max-w-full">
+                        <Badge variant="secondary" className="max-w-full">
+                          <span className="truncate" title={tag.name}>
+                            {tag.name}
+                          </span>
+                        </Badge>
                       </li>
                     ))}
                   </ul>
@@ -152,7 +156,7 @@ function PostPage() {
                     )}
                     <AvatarFallback>{initial(post.author.name)}</AvatarFallback>
                   </Avatar>
-                  <div className="flex flex-col gap-0.5">
+                  <div className="flex min-w-0 flex-col gap-0.5">
                     <span className="font-medium text-foreground">
                       {post.author.name}
                     </span>
