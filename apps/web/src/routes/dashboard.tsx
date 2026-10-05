@@ -4,7 +4,7 @@ import { PenLineIcon } from 'lucide-react'
 import { AppSidebar } from '#/components/dashboard/sidebar'
 import { PostFeed } from '#/components/dashboard/post-feed'
 import { SessionVerificationError } from '#/components/session-error'
-import { Button } from '#/components/ui/button'
+import { buttonVariants } from '#/components/ui/button'
 import { Separator } from '#/components/ui/separator'
 import {
   SidebarInset,
@@ -52,10 +52,10 @@ function DashboardPage() {
               <p className="text-sm text-muted-foreground">
                 Share an idea with the DashNode community.
               </p>
-              <Button render={<Link to="/posts/new" />}>
+              <Link to="/posts/new" className={buttonVariants()}>
                 <PenLineIcon data-icon="inline-start" />
                 Create post
-              </Button>
+              </Link>
             </aside>
           </div>
         </div>
