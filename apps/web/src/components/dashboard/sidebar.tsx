@@ -4,7 +4,13 @@ import {
   useRouter,
   useRouterState,
 } from '@tanstack/react-router'
-import { FeatherIcon, HomeIcon, LogOutIcon, RssIcon } from 'lucide-react'
+import {
+  FeatherIcon,
+  HomeIcon,
+  LogOutIcon,
+  PenLineIcon,
+  RssIcon,
+} from 'lucide-react'
 
 import { Avatar, AvatarFallback, AvatarImage } from '#/components/ui/avatar'
 import {
@@ -40,6 +46,7 @@ import type { LucideIcon } from 'lucide-react'
 // than no entry. A page added later gets its own item here.
 const navigation: { title: string; to: string; icon: LucideIcon }[] = [
   { title: 'Feed', to: '/dashboard', icon: RssIcon },
+  { title: 'Write', to: '/new-post', icon: PenLineIcon },
   { title: 'Home', to: '/', icon: HomeIcon },
 ]
 
