@@ -35,6 +35,7 @@ import {
   SidebarMenuItem,
   SidebarRail,
   SidebarSeparator,
+  useSidebar,
 } from '#/components/ui/sidebar'
 import { Spinner } from '#/components/ui/spinner'
 import { useLogout } from '#lib/session'
@@ -59,22 +60,28 @@ export function AppSidebar({ user }: { user: SessionUser }) {
   const navigate = useNavigate()
   const router = useRouter()
   const logout = useLogout()
+  const { isMobile, setOpenMobile } = useSidebar()
   const pathname = useRouterState({
     select: (state) => state.location.pathname,
   })
 
   return (
     <Sidebar collapsible="icon">
-      <SidebarHeader>
+      <SidebarHeader className="h-16 shrink-0 justify-center">
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton
               size="lg"
               render={<Link to="/" />}
               tooltip="DashNode"
+              aria-label="DashNode home"
+              onClick={() => setOpenMobile(false)}
+              className="group-data-[collapsible=icon]:justify-center"
             >
               <FeatherIcon />
-              <span className="font-heading text-base">DashNode</span>
+              <span className="font-heading text-base group-data-[collapsible=icon]:hidden">
+                DashNode
+              </span>
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
@@ -91,9 +98,14 @@ export function AppSidebar({ user }: { user: SessionUser }) {
                     render={<Link to={item.to} />}
                     isActive={pathname === item.to}
                     tooltip={item.title}
+                    aria-label={item.title}
+                    aria-current={pathname === item.to ? 'page' : undefined}
+                    onClick={() => setOpenMobile(false)}
                   >
                     <item.icon />
-                    {item.title}
+                    <span className="group-data-[collapsible=icon]:hidden">
+                      {item.title}
+                    </span>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}
@@ -105,23 +117,39 @@ export function AppSidebar({ user }: { user: SessionUser }) {
         <SidebarMenu>
           <SidebarMenuItem>
             <DropdownMenu>
-              <DropdownMenuTrigger render={<SidebarMenuButton size="lg" />}>
-                <Avatar className="size-6">
+              <DropdownMenuTrigger
+                render={
+                  <SidebarMenuButton
+                    size="lg"
+                    aria-label={`Account menu for ${user.name}`}
+                    className="group-data-[collapsible=icon]:justify-center"
+                  />
+                }
+              >
+                <Avatar className="size-6 shrink-0">
                   {user.avatarUrl === '' ? null : (
                     <AvatarImage src={user.avatarUrl} alt="" />
                   )}
                   <AvatarFallback>{initial(user.name)}</AvatarFallback>
                 </Avatar>
-                <div className="flex flex-col items-start gap-0.5 text-left">
+                <div className="flex min-w-0 flex-1 flex-col gap-0.5 text-left group-data-[collapsible=icon]:hidden">
                   <span className="truncate font-medium">{user.name}</span>
                   <span className="truncate text-xs text-muted-foreground">
                     {user.email}
                   </span>
                 </div>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" side="right" className="w-56">
+              <DropdownMenuContent
+                align="end"
+                side={isMobile ? 'top' : 'right'}
+                className="w-56"
+              >
                 <DropdownMenuGroup>
-                  <DropdownMenuLabel>{user.email}</DropdownMenuLabel>
+                  <DropdownMenuLabel>
+                    <span className="block truncate" title={user.email}>
+                      {user.email}
+                    </span>
+                  </DropdownMenuLabel>
                 </DropdownMenuGroup>
                 <DropdownMenuSeparator />
                 <DropdownMenuGroup>

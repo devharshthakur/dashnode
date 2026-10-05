@@ -31,15 +31,18 @@ function DashboardPage() {
   return (
     <SidebarProvider>
       <AppSidebar user={user} />
-      <SidebarInset>
+      <SidebarInset className="min-w-0">
         <header className="flex h-16 shrink-0 items-center gap-2 border-b px-4">
           <SidebarTrigger className="-ml-1" />
-          <Separator orientation="vertical" className="mr-2 h-4" />
+          <Separator
+            orientation="vertical"
+            className="mr-2 h-4 data-vertical:self-center"
+          />
           <h1 className="font-heading text-base font-medium">Dashboard</h1>
         </header>
         <div className="flex flex-1 flex-col gap-6 p-4">
           <div className="grid items-start gap-6 lg:grid-cols-3">
-            <section className="flex flex-col gap-4 lg:col-span-2">
+            <section className="flex min-w-0 flex-col gap-4 lg:col-span-2">
               <h2 className="font-heading text-sm font-medium text-muted-foreground">
                 Latest posts
               </h2>

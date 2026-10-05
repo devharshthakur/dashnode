@@ -31,10 +31,13 @@ function NewPostPage() {
   return (
     <SidebarProvider>
       <AppSidebar user={user} />
-      <SidebarInset>
+      <SidebarInset className="min-w-0">
         <header className="flex h-16 shrink-0 items-center gap-2 border-b px-4">
           <SidebarTrigger className="-ml-1" />
-          <Separator orientation="vertical" className="mr-2 h-4" />
+          <Separator
+            orientation="vertical"
+            className="mr-2 h-4 data-vertical:self-center"
+          />
           <h1 className="font-heading text-base font-medium">New post</h1>
         </header>
         <main className="flex flex-1 flex-col px-4 py-8 sm:px-8">
