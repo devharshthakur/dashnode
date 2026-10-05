@@ -1,9 +1,10 @@
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute, Link } from '@tanstack/react-router'
+import { PenLineIcon } from 'lucide-react'
 
 import { AppSidebar } from '#/components/dashboard/sidebar'
-import { CreatePostCard } from '#/components/dashboard/create-post-card'
 import { PostFeed } from '#/components/dashboard/post-feed'
 import { SessionVerificationError } from '#/components/session-error'
+import { Button } from '#/components/ui/button'
 import { Separator } from '#/components/ui/separator'
 import {
   SidebarInset,
@@ -44,8 +45,17 @@ function DashboardPage() {
               </h2>
               <PostFeed />
             </section>
-            <aside className="flex flex-col gap-4">
-              <CreatePostCard />
+            <aside className="flex flex-col items-start gap-3 border-t pt-5 lg:border-t-0 lg:border-l lg:pt-0 lg:pl-6">
+              <h2 className="font-heading text-sm font-medium">
+                Start writing
+              </h2>
+              <p className="text-sm text-muted-foreground">
+                Share an idea with the DashNode community.
+              </p>
+              <Button render={<Link to="/new-post" />}>
+                <PenLineIcon data-icon="inline-start" />
+                Create post
+              </Button>
             </aside>
           </div>
         </div>
